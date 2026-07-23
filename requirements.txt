@@ -1,0 +1,7 @@
+Flask==3.0.0
+PyMySQL==1.1.0
+cryptography==41.0.3
+opencv-python==4.8.1.78
+ultralytics==8.0.200
+Werkzeug==3.0.1
+Pillow==10.1.0

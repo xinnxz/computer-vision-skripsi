@@ -1,0 +1,41 @@
+# ============================
+# Model AI (terlalu besar untuk GitHub > 100MB)
+# ============================
+model/best.pt
+model/last.pt
+best/
+*.pt
+*.pth
+runs/
+
+# ============================
+# File dokumen besar (laporan)
+# ============================
+*.docx
+*.pdf
+
+# ============================
+# Dataset (terlalu besar, sudah ada di Google Drive)
+# ============================
+dataset/
+*.zip
+
+# ============================
+# File hasil upload/scan
+# ============================
+static/uploads/
+
+# ============================
+# Python cache
+# ============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ============================
+# Environment
+# ============================
+.env
+venv/
+.venv/

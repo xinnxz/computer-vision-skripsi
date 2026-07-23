@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Sistem Deteksi Kesalahan Penyimpanan Bahan Baku{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
+    <p class="text-gray-600">Selamat datang kembali, {{ session.get('nama') }}!</p>
+</div>
+
+<!-- Stats Cards (sesuai mockup: 4 kartu di atas) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                <i class="fas fa-box text-xl"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Bahan Baku</p>
+                <p class="text-2xl font-bold text-gray-800">{{ stats.total_bahan }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                <i class="fas fa-server text-xl"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Rak</p>
+                <p class="text-2xl font-bold text-gray-800">{{ stats.total_rak }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+                <i class="fas fa-camera text-xl"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Riwayat Scan</p>
+                <p class="text-2xl font-bold text-gray-800">{{ stats.total_deteksi }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-orange-100 text-orange-600 mr-4">
+                <i class="fas fa-user-tie text-xl"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-500">Total Staff</p>
+                <p class="text-2xl font-bold text-gray-800">{{ stats.total_staff }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grafik (sesuai mockup Gbr 3.23: bar chart + pie chart) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Bar Chart: Statistik Deteksi per Status -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Statistik Hasil Deteksi</h3>
+        <div class="flex items-end space-x-6 h-48">
+            <!-- Bar: Sesuai -->
+            <div class="flex flex-col items-center flex-1">
+                <div class="w-full bg-green-500 rounded-t-lg transition-all duration-500 relative group"
+                     style="height: {{ ((stats.sesuai / (stats.sesuai + stats.tidak_sesuai)) * 100) if (stats.sesuai + stats.tidak_sesuai) > 0 else 10 }}%;">
+                    <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-700">{{ stats.sesuai }}</span>
+                </div>
+                <span class="text-xs text-gray-600 mt-2 font-medium">Sesuai</span>
+            </div>
+            <!-- Bar: Tidak Sesuai -->
+            <div class="flex flex-col items-center flex-1">
+                <div class="w-full bg-red-500 rounded-t-lg transition-all duration-500 relative"
+                     style="height: {{ ((stats.tidak_sesuai / (stats.sesuai + stats.tidak_sesuai)) * 100) if (stats.sesuai + stats.tidak_sesuai) > 0 else 10 }}%;">
+                    <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-700">{{ stats.tidak_sesuai }}</span>
+                </div>
+                <span class="text-xs text-gray-600 mt-2 font-medium">Tidak Sesuai</span>
+            </div>
+            <!-- Bar: Total -->
+            <div class="flex flex-col items-center flex-1">
+                <div class="w-full bg-blue-500 rounded-t-lg transition-all duration-500 relative"
+                     style="height: 100%;">
+                    <span class="absolute -top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-700">{{ stats.total_deteksi }}</span>
+                </div>
+                <span class="text-xs text-gray-600 mt-2 font-medium">Total</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie Chart: Rasio Sesuai vs Tidak Sesuai -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Rasio Kesesuaian Penempatan</h3>
+        <div class="flex items-center justify-center">
+            {% set total = stats.sesuai + stats.tidak_sesuai %}
+            {% set persen_sesuai = ((stats.sesuai / total) * 100) | round(1) if total > 0 else 0 %}
+            {% set persen_tidak = ((stats.tidak_sesuai / total) * 100) | round(1) if total > 0 else 0 %}
+            {% set deg = (persen_sesuai / 100 * 360) | round(0) | int if total > 0 else 180 %}
+            <div class="relative w-44 h-44">
+                <div class="w-44 h-44 rounded-full"
+                     style="background: conic-gradient(#22c55e 0deg {{ deg }}deg, #ef4444 {{ deg }}deg 360deg);">
+                </div>
+                <div class="absolute inset-4 bg-white rounded-full flex items-center justify-center">
+                    <span class="text-lg font-bold text-gray-700">{{ persen_sesuai }}%</span>
+                </div>
+            </div>
+            <div class="ml-6 space-y-3">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                    <span class="text-sm text-gray-700">Sesuai ({{ stats.sesuai }})</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                    <span class="text-sm text-gray-700">Tidak Sesuai ({{ stats.tidak_sesuai }})</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">Aksi Cepat</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <a href="{{ url_for('scan_rak') }}" class="flex items-center p-4 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+            <div class="p-3 rounded-full bg-blue-500 text-white mr-4">
+                <i class="fas fa-camera"></i>
+            </div>
+            <div>
+                <p class="font-bold text-blue-800">Scan Rak (YOLOv8)</p>
+                <p class="text-sm text-blue-600">Ambil foto rak untuk memvalidasi posisi barang</p>
+            </div>
+        </a>
+        
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('kelola_bahan') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <div class="p-3 rounded-full bg-gray-200 text-gray-700 mr-4">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div>
+                <p class="font-bold text-gray-800">Tambah Bahan Baku</p>
+                <p class="text-sm text-gray-500">Daftarkan bahan baku baru ke database</p>
+            </div>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Info Panel -->
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <h3 class="text-lg font-bold text-gray-800 mb-2">Informasi Sistem</h3>
+    <p class="text-gray-600 text-sm mb-4">Sistem ini menggunakan algoritma You Only Look Once (YOLO) versi 8 untuk mendeteksi bahan baku makanan pada gudang kering, dan membandingkannya dengan database lokasi rak yang benar.</p>
+    
+    <div class="flex items-center space-x-2 text-sm">
+        {% if yolo_ready %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-800" title="Model AI sudah terintegrasi">
+            <i class="fas fa-check-circle mr-1"></i> YOLOv8 Ready
+        </span>
+        {% else %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-800" title="Menjalankan mode simulasi tanpa AI">
+            <i class="fas fa-exclamation-triangle mr-1"></i> YOLOv8 Mode Simulasi
+        </span>
+        {% endif %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-800">
+            <i class="fas fa-database mr-1"></i> MySQL Connected
+        </span>
+    </div>
+</div>
+{% endblock %}

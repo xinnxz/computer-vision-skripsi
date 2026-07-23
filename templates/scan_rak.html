@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Scan Rak dan Bahan Baku - Sistem Deteksi Kesalahan Penyimpanan Bahan Baku{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Scan Rak Penyimpanan</h2>
+    <p class="text-gray-600">Pilih rak yang akan diperiksa, lalu unggah foto rak tersebut untuk dianalisis oleh AI YOLOv8</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- LEFT: Form Scan -->
+    <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            
+            <!-- STEP 1: Pilih Rak -->
+            <h3 class="font-bold text-gray-800 mb-2 flex items-center">
+                <span class="w-7 h-7 rounded-full bg-blue-500 text-white text-sm flex items-center justify-center font-bold mr-2">1</span>
+                Pilih Rak yang Akan Diperiksa
+            </h3>
+            <div class="mb-6">
+                <select id="selectRak" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">-- Pilih Rak --</option>
+                    {% for rak in daftar_rak %}
+                    <option value="{{ rak.id_lokasi }}">{{ rak.nama_rak }} — {{ rak.keterangan }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- STEP 2: Upload Area -->
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+                <span class="w-7 h-7 rounded-full bg-blue-500 text-white text-sm flex items-center justify-center font-bold mr-2">2</span>
+                Upload / Ambil Foto Rak Tersebut
+            </h3>
+            <div id="uploadArea" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                <p class="text-gray-600 font-semibold">Klik untuk Unggah Foto</p>
+                <p class="text-gray-400 text-sm mt-1">PNG, JPG, JPEG (maks. 10MB)</p>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" capture="environment" class="hidden" onchange="previewGambar(event)">
+
+            <!-- Preview Gambar -->
+            <div id="previewContainer" class="mt-4 hidden">
+                <img id="previewImg" src="" alt="Preview Foto Rak" class="w-full rounded-lg border border-gray-200 object-cover max-h-56">
+                <button onclick="resetUpload()" class="mt-2 text-sm text-red-500 hover:text-red-700 flex items-center">
+                    <i class="fas fa-times-circle mr-1"></i> Ganti Foto
+                </button>
+            </div>
+
+            <hr class="my-5">
+
+            <button id="btnScan" onclick="mulaiScan()" class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors">
+                <i class="fas fa-search mr-2"></i> Mulai Deteksi YOLO
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Hasil Deteksi -->
+    <div class="lg:col-span-2">
+        
+        <!-- Loading State -->
+        <div id="loadingPanel" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-700 font-semibold text-lg">Menganalisis Gambar...</p>
+            <p class="text-gray-400 text-sm mt-2">Model YOLOv8 sedang mendeteksi objek pada rak</p>
+        </div>
+
+        <!-- Empty State (default) -->
+        <div id="emptyPanel" class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <i class="fas fa-camera text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 font-semibold text-lg">Hasil Deteksi</p>
+            <p class="text-gray-400 text-sm mt-2">Pilih rak dan unggah foto untuk melihat hasil analisis YOLOv8 di sini</p>
+        </div>
+
+        <!-- Result Panel -->
+        <div id="resultPanel" class="hidden">
+            <!-- Gambar dengan Bounding Box -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                <h3 class="font-bold text-gray-800 mb-3">Hasil Deteksi Visual</h3>
+                <img id="resultImg" src="" alt="Hasil Deteksi" class="w-full rounded-lg">
+            </div>
+
+            <!-- Detail Deteksi Per Item -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 class="font-bold text-gray-800 mb-4">Detail Hasil Pemeriksaan</h3>
+                <div id="detailList" class="space-y-3">
+                    <!-- Diisi oleh JavaScript -->
+                </div>
+                
+                <!-- Summary -->
+                <div id="summarySection" class="mt-6 pt-4 border-t border-gray-200 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-800">Status Keseluruhan Rak:</span>
+                        <span id="statusBadge" class="px-3 py-1 rounded-full font-bold text-sm"></span>
+                    </div>
+                    <button onclick="simpanHasil()" class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> Simpan Hasil ke Riwayat
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedFile = null;
+
+    function previewGambar(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        selectedFile = file;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('previewContainer').classList.remove('hidden');
+            document.getElementById('uploadArea').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function resetUpload() {
+        selectedFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('previewContainer').classList.add('hidden');
+        document.getElementById('uploadArea').classList.remove('hidden');
+        document.getElementById('emptyPanel').classList.remove('hidden');
+        document.getElementById('resultPanel').classList.add('hidden');
+    }
+
+    function mulaiScan() {
+        const idLokasi = document.getElementById('selectRak').value;
+        if (!idLokasi) {
+            alert('Harap pilih rak terlebih dahulu!');
+            return;
+        }
+
+        if (!selectedFile) {
+            alert('Harap unggah foto rak terlebih dahulu!');
+            return;
+        }
+
+        // Tampilkan loading panel
+        document.getElementById('emptyPanel').classList.add('hidden');
+        document.getElementById('resultPanel').classList.add('hidden');
+        document.getElementById('loadingPanel').classList.remove('hidden');
+
+        // Kirim gambar dan id rak ke backend Flask untuk diproses YOLOv8
+        const formData = new FormData();
+        formData.append('gambar', selectedFile);
+        formData.append('id_lokasi', idLokasi);
+
+        fetch('/deteksi', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingPanel').classList.add('hidden');
+            tampilkanHasil(data);
+        })
+        .catch(error => {
+            document.getElementById('loadingPanel').classList.add('hidden');
+            document.getElementById('emptyPanel').classList.remove('hidden');
+            alert('Terjadi kesalahan saat mendeteksi. Pastikan server Flask berjalan. Error: ' + error);
+        });
+    }
+
+    function tampilkanHasil(data) {
+        document.getElementById('resultPanel').classList.remove('hidden');
+
+        if (data.gambar_hasil) {
+            document.getElementById('resultImg').src = '/static/uploads/' + data.gambar_hasil;
+        }
+
+        const detailList = document.getElementById('detailList');
+        detailList.innerHTML = '';
+        
+        if (!data.deteksi || data.deteksi.length === 0) {
+            detailList.innerHTML = '<p class="text-gray-500 text-center py-4"><i class="fas fa-exclamation-circle mr-2"></i>Tidak ada objek bahan baku yang terdeteksi pada gambar.</p>';
+            return;
+        }
+
+        data.deteksi.forEach(item => {
+            const isSesuai = item.status === 'SESUAI';
+            const card = `
+                <div class="flex items-center p-3 rounded-lg border ${isSesuai ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                    <div class="flex-shrink-0 mr-4">
+                        <div class="w-12 h-12 rounded-full ${isSesuai ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center text-white">
+                            <i class="fas ${isSesuai ? 'fa-check' : 'fa-times'} text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold ${isSesuai ? 'text-green-800' : 'text-red-800'}">${item.nama_bahan}</p>
+                        <p class="text-sm ${isSesuai ? 'text-green-600' : 'text-red-600'}">
+                            ${isSesuai ? 'Penempatan SESUAI' : 'SALAH PENEMPATAN! Seharusnya di ' + item.lokasi_seharusnya}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">Confidence: <strong>${(item.confidence * 100).toFixed(1)}%</strong></p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isSesuai ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${item.status}
+                    </span>
+                </div>
+            `;
+            detailList.innerHTML += card;
+        });
+
+        // Tampilkan status keseluruhan
+        const summarySection = document.getElementById('summarySection');
+        summarySection.classList.remove('hidden');
+        
+        const adaYangSalah = data.deteksi.some(item => item.status !== 'SESUAI');
+        const statusBadge = document.getElementById('statusBadge');
+        if (adaYangSalah) {
+            statusBadge.textContent = '⚠️ ADA KESALAHAN PENEMPATAN';
+            statusBadge.className = 'px-3 py-1 rounded-full font-bold text-sm bg-red-100 text-red-700';
+        } else {
+            statusBadge.textContent = '✅ SEMUA SESUAI';
+            statusBadge.className = 'px-3 py-1 rounded-full font-bold text-sm bg-green-100 text-green-700';
+        }
+    }
+
+    function simpanHasil() {
+        alert('Hasil deteksi berhasil disimpan ke riwayat!');
+    }
+</script>
+{% endblock %}
