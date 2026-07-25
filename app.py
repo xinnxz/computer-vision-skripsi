@@ -42,7 +42,15 @@ def load_yolo_model():
     global yolo_model
     if YOLO_MODEL_READY and os.path.exists(YOLO_MODEL_PATH):
         try:
+            import torch
             from ultralytics import YOLO
+            # Fix kompatibilitas PyTorch 2.6+ (weights_only=True restriction)
+            if hasattr(torch.serialization, 'add_safe_globals'):
+                try:
+                    from ultralytics.nn.tasks import DetectionModel
+                    torch.serialization.add_safe_globals([DetectionModel])
+                except Exception:
+                    pass
             yolo_model = YOLO(YOLO_MODEL_PATH)
             print(f"[INFO] Model YOLOv8 berhasil dimuat dari: {YOLO_MODEL_PATH}")
         except Exception as e:
