@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Live Camera AI{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-gray-800">🔴 Live Camera AI Detection</h2>
+    <a href="{{ url_for('dashboard') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+        <i class="fas fa-arrow-left mr-2"></i> Kembali
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-md p-6">
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                    <strong>Perhatian:</strong> Sistem sedang mengakses kamera utama laptop/PC Anda secara real-time. Pastikan barang berada di area yang terang agar AI dapat mendeteksi dengan optimal.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col items-center">
+        <!-- Kotak Kamera -->
+        <div class="relative bg-black rounded-lg overflow-hidden shadow-inner flex items-center justify-center min-h-[480px] min-w-[640px] border-4 border-gray-800">
+            <!-- Ini adalah gambar yang akan di-stream terus menerus dari Flask -->
+            <img src="{{ url_for('video_feed') }}" alt="Live Camera Feed" class="w-full h-auto object-contain">
+            
+            <!-- Indikator Live -->
+            <div class="absolute top-4 right-4 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center shadow-lg">
+                <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
+                LIVE
+            </div>
+        </div>
+        
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            <p><i class="fas fa-info-circle mr-1"></i> Jika gambar tidak muncul, pastikan browser memiliki izin (permission) untuk mengakses kamera.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
