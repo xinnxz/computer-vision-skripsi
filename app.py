@@ -111,8 +111,27 @@ def jalankan_deteksi(image_path, id_lokasi_pilihan):
     cursor.close()
     conn.close()
 
-    # Buat mapping: nama_bahan -> dict bahan
-    mapping_bahan = {b['nama_bahan'].upper(): b for b in semua_bahan}
+    # Buat mapping: nama_bahan -> dict bahan (UPPERCASE untuk pencocokan)
+    mapping_bahan = {b['nama_bahan'].upper().strip(): b for b in semua_bahan}
+
+    # Helper: Pencocokan nama fleksibel (fuzzy match)
+    def cocokkan_nama(nama_yolo):
+        """Cocokkan nama kelas YOLO dengan database, termasuk partial match."""
+        nama_yolo = nama_yolo.strip()
+        # 1. Exact match
+        if nama_yolo in mapping_bahan:
+            return mapping_bahan[nama_yolo]
+        # 2. Partial match (nama YOLO mengandung nama DB, atau sebaliknya)
+        for key, val in mapping_bahan.items():
+            if key in nama_yolo or nama_yolo in key:
+                return val
+        # 3. Word-level match (minimal satu kata penting cocok)
+        kata_yolo = set(nama_yolo.split())
+        for key, val in mapping_bahan.items():
+            kata_db = set(key.split())
+            if kata_yolo & kata_db:  # Ada irisan kata
+                return val
+        return None
 
     hasil_deteksi = []
     gambar_hasil_filename = None
@@ -128,8 +147,9 @@ def jalankan_deteksi(image_path, id_lokasi_pilihan):
         results = yolo_model(img, conf=0.25, iou=0.45, agnostic_nms=True)
         
         img_h, img_w = img.shape[:2]
-        thickness = 2
-        font_scale = 0.55
+        # Skala otomatis: font & garis menyesuaikan resolusi gambar
+        thickness = max(2, int(min(img_w, img_h) / 400))
+        font_scale = max(0.5, min(img_w, img_h) / 1200)
         
         for r in results:
             boxes = r.boxes
@@ -148,20 +168,39 @@ def jalankan_deteksi(image_path, id_lokasi_pilihan):
                 
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 
-                # Validasi posisi
-                if nama_kelas in mapping_bahan:
-                    bahan_info = mapping_bahan[nama_kelas]
-                    status = 'SESUAI' if str(bahan_info['id_lokasi']) == str(id_lokasi_pilihan) else 'TIDAK SESUAI'
-                    lokasi_seharusnya = bahan_info['nama_rak'] if status == 'TIDAK SESUAI' else nama_rak_pilihan
+                # Validasi posisi menggunakan fuzzy matching
+                bahan_cocok = cocokkan_nama(nama_kelas)
+                if bahan_cocok:
+                    status = 'SESUAI' if str(bahan_cocok['id_lokasi']) == str(id_lokasi_pilihan) else 'TIDAK SESUAI'
+                    lokasi_seharusnya = bahan_cocok['nama_rak'] if status == 'TIDAK SESUAI' else nama_rak_pilihan
                 else:
                     status = 'TIDAK DIKENAL'
                     lokasi_seharusnya = '-'
                 
-                # Gambar bounding box di atas gambar utuh
-                warna = (0, 255, 0) if status == 'SESUAI' else (0, 0, 255)
+                # === WARNA BOUNDING BOX BERDASARKAN STATUS ===
+                # Hijau = SESUAI, Merah = TIDAK SESUAI, Kuning = TIDAK DIKENAL
+                if status == 'SESUAI':
+                    warna = (0, 200, 0)       # Hijau
+                elif status == 'TIDAK SESUAI':
+                    warna = (0, 0, 255)       # Merah
+                else:
+                    warna = (0, 200, 255)     # Kuning/Orange
+                
+                # Gambar bounding box
                 cv2.rectangle(img, (x1, y1), (x2, y2), warna, thickness)
-                label = f"{nama_kelas} {confidence:.0%} ({nama_rak_pilihan})"
-                cv2.putText(img, label, (x1, max(y1 - 10, 20)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, warna, thickness)
+                
+                # Label teks yang informatif
+                if status == 'SESUAI':
+                    label = f"[SESUAI] {nama_kelas} {confidence:.0%}"
+                elif status == 'TIDAK SESUAI':
+                    label = f"[SALAH RAK!] {nama_kelas} {confidence:.0%} -> {lokasi_seharusnya}"
+                else:
+                    label = f"[?] {nama_kelas} {confidence:.0%}"
+                
+                # Background label agar terbaca jelas
+                (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+                cv2.rectangle(img, (x1, max(y1 - th - 14, 0)), (x1 + tw + 6, max(y1 - 2, 0)), warna, -1)
+                cv2.putText(img, label, (x1 + 3, max(y1 - 8, 18)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness)
                 
                 hasil_deteksi.append({
                     'nama_bahan': nama_kelas.capitalize(),
@@ -647,29 +686,71 @@ def hapus_staff(id):
 @app.route('/live_cam')
 @login_required
 def live_cam():
-    return render_template('live_cam.html')
+    daftar_rak = []
+    try:
+        conn = get_db(); cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tb_lokasi_rak ORDER BY id_lokasi")
+        daftar_rak = cursor.fetchall()
+        cursor.close(); conn.close()
+    except: pass
+    return render_template('live_cam.html', daftar_rak=daftar_rak)
 
 @app.route('/detect_frame', methods=['POST'])
 @login_required
 def detect_frame():
     """
     Menerima frame gambar dari kamera browser (via JavaScript),
-    menjalankan deteksi YOLOv8, dan mengembalikan hasil sebagai JSON.
-    
-    Request: multipart/form-data dengan field 'frame' berisi gambar JPEG.
-    Response: JSON { "detections": [ {name, confidence, x1, y1, x2, y2}, ... ] }
+    menjalankan deteksi YOLOv8, memvalidasi dengan database, 
+    dan mengembalikan hasil JSON termasuk status Sesuai/Tidak Sesuai.
     """
     if 'frame' not in request.files:
         return jsonify({'error': 'No frame received', 'detections': []}), 400
 
     file = request.files['frame']
+    id_lokasi = request.form.get('id_lokasi')
     
-    # Baca file gambar menjadi numpy array (OpenCV format)
     file_bytes = np.frombuffer(file.read(), np.uint8)
     frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     
     if frame is None:
         return jsonify({'error': 'Invalid image', 'detections': []}), 400
+
+    # Cache pemetaan bahan ke lokasi (UPPERCASE untuk pencocokan)
+    mapping_bahan = {}
+    semua_bahan_list = []
+    nama_rak_pilihan = 'Unknown'
+    if id_lokasi:
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("""
+                SELECT b.id_bahan, b.nama_bahan, b.id_lokasi, r.nama_rak
+                FROM tb_bahan_baku b
+                JOIN tb_lokasi_rak r ON b.id_lokasi = r.id_lokasi
+            """)
+            semua_bahan_list = cursor.fetchall()
+            mapping_bahan = {b['nama_bahan'].upper().strip(): b for b in semua_bahan_list}
+            
+            cursor.execute("SELECT nama_rak FROM tb_lokasi_rak WHERE id_lokasi = %s", (id_lokasi,))
+            rak_row = cursor.fetchone()
+            if rak_row: nama_rak_pilihan = rak_row['nama_rak']
+            cursor.close(); conn.close()
+        except Exception as e:
+            print(f"[DB Warning] {e}")
+
+    # Helper: Pencocokan nama fleksibel (fuzzy match) — sama dengan jalankan_deteksi
+    def cocokkan_nama_live(nama_yolo):
+        nama_yolo = nama_yolo.strip()
+        if nama_yolo in mapping_bahan:
+            return mapping_bahan[nama_yolo]
+        for key, val in mapping_bahan.items():
+            if key in nama_yolo or nama_yolo in key:
+                return val
+        kata_yolo = set(nama_yolo.split())
+        for key, val in mapping_bahan.items():
+            kata_db = set(key.split())
+            if kata_yolo & kata_db:
+                return val
+        return None
 
     detections = []
 
@@ -683,18 +764,103 @@ def detect_frame():
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
-                nama_kelas = r.names[cls_id]
+                nama_kelas_mentah = r.names[cls_id].upper()
                 
+                # --- PEMBERSIH TEKS OTOMATIS ---
+                nama_kelas = nama_kelas_mentah.replace("DATASET_", "")
+                nama_kelas = nama_kelas.replace("_", " ").strip()
+                nama_kelas = nama_kelas.replace("BAWANGMERAH", "BAWANG MERAH")
+                nama_kelas = nama_kelas.replace("BAWANGPUTIH", "BAWANG PUTIH")
+                nama_kelas = nama_kelas.replace("SAOSTIRAM", "SAUS TIRAM")
+                nama_kelas = nama_kelas.replace("FOTO ", "")
+                
+                # Validasi database dengan fuzzy matching (konsisten dengan scan foto)
+                if not id_lokasi:
+                    status = 'INFO'
+                    lokasi_seharusnya = '-'
+                else:
+                    bahan_cocok = cocokkan_nama_live(nama_kelas)
+                    if bahan_cocok:
+                        status = 'SESUAI' if str(bahan_cocok['id_lokasi']) == str(id_lokasi) else 'TIDAK SESUAI'
+                        lokasi_seharusnya = bahan_cocok['nama_rak'] if status == 'TIDAK SESUAI' else nama_rak_pilihan
+                    else:
+                        status = 'TIDAK DIKENAL'
+                        lokasi_seharusnya = '-'
+
                 detections.append({
-                    'name': nama_kelas,
+                    'name': nama_kelas.capitalize(),
                     'confidence': int(conf * 100),
                     'x1': x1,
                     'y1': y1,
                     'x2': x2,
-                    'y2': y2
+                    'y2': y2,
+                    'status': status,
+                    'lokasi_seharusnya': lokasi_seharusnya,
+                    'lokasi_terdeteksi': nama_rak_pilihan
                 })
 
     return jsonify({'detections': detections})
+
+import base64
+
+@app.route('/save_live_scan', methods=['POST'])
+@login_required
+def save_live_scan():
+    """Menerima screenshot base64 dari Live Camera dan menyimpan ke database."""
+    data = request.json
+    image_data = data.get('image')
+    id_lokasi = data.get('id_lokasi')
+    detections = data.get('detections', [])
+
+    if not image_data or not id_lokasi:
+        return jsonify({'error': 'Data tidak lengkap (image/lokasi kosong)'}), 400
+
+    try:
+        # Decode base64
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        img_bytes = base64.b64decode(image_data)
+        
+        # Simpan file gambar
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename  = f"live_{timestamp}.jpg"
+        filepath  = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        with open(filepath, 'wb') as f:
+            f.write(img_bytes)
+
+        # Simpan ke DB tb_scan
+        conn = get_db(); cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO tb_scan (id_user, id_lokasi, gambar, gambar_hasil, waktu_scan)
+            VALUES (%s, %s, %s, %s, NOW())
+        """, (session['id'], id_lokasi, filename, filename)) # Kita simpan gambar yang sama krn sdh ada bounding box dari frontend
+        id_scan = cursor.lastrowid
+
+        # Simpan setiap deteksi ke tb_deteksi
+        for item in detections:
+            cursor.execute("SELECT id_bahan FROM tb_bahan_baku WHERE nama_bahan = %s LIMIT 1", (item['name'].upper(),))
+            bahan_row = cursor.fetchone()
+            id_bahan = bahan_row['id_bahan'] if bahan_row else None
+
+            cursor.execute("SELECT id_lokasi FROM tb_lokasi_rak WHERE nama_rak = %s LIMIT 1", (item.get('lokasi_terdeteksi'),))
+            rak_row = cursor.fetchone()
+            id_lok_terdeteksi = rak_row['id_lokasi'] if rak_row else None
+
+            conf_db = float(item.get('confidence', 0)) / 100.0
+
+            cursor.execute("""
+                INSERT INTO tb_deteksi (id_scan, id_user, id_lokasi, id_bahan, tanggal_deteksi, confidence, status, lokasi_seharusnya)
+                VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s)
+            """, (id_scan, session['id'], id_lok_terdeteksi, id_bahan, conf_db, item['status'], item.get('lokasi_seharusnya', '-')))
+
+        conn.commit(); cursor.close(); conn.close()
+
+        return jsonify({'sukses': True, 'message': 'Bukti berhasil disimpan ke riwayat!'})
+    except Exception as e:
+        print(f"[ERROR] Gagal save_live_scan: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================

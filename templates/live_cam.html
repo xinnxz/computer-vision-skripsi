@@ -45,15 +45,22 @@
     <!-- Garis Scan ala Google Lens -->
     <div id="scannerLine" class="scanner-line"></div>
 
+    <!-- Shutter Button (Screenshot Bukti) -->
+    <div id="shutterContainer" class="absolute bottom-24 left-0 w-full z-40 flex justify-center hidden pointer-events-auto">
+        <button onclick="takeScreenshot()" class="w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.6)] active:scale-90 transition-transform">
+            <div class="w-12 h-12 bg-white rounded-full border border-gray-200"></div>
+        </button>
+    </div>
+
     <!-- UI Overlay Atas -->
-    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 bg-gradient-to-b from-black/70 to-transparent">
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
         <!-- Tombol Kembali -->
-        <a href="{{ url_for('dashboard') }}" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-black/70 transition">
+        <a href="{{ url_for('dashboard') }}" class="pointer-events-auto bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-black/70 transition">
             <i class="fas fa-arrow-left text-xl"></i>
         </a>
         
         <!-- Status & Tombol Flip Kamera -->
-        <div class="flex flex-col items-end gap-3">
+        <div class="flex flex-col items-end gap-3 pointer-events-auto">
             <div id="liveIndicator" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center shadow-lg hidden">
                 <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
                 LIVE
@@ -73,8 +80,18 @@
     <div id="startScreen" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black">
         <i class="fas fa-expand text-6xl text-gray-500 mb-6"></i>
         <h2 class="text-2xl font-bold mb-2">Live AI Scanner</h2>
-        <p class="text-gray-400 text-center px-8 mb-8 text-sm">Arahkan kamera ke rak atau bahan baku gudang untuk memindai secara otomatis.</p>
+        <p class="text-gray-400 text-center px-8 mb-6 text-sm">Arahkan kamera ke rak atau bahan baku gudang untuk memindai secara otomatis.</p>
         
+        <div class="mb-8 w-64">
+            <label class="block text-gray-400 text-xs font-bold mb-2 text-center uppercase tracking-wider">Pilih Lokasi Rak</label>
+            <select id="rakSelect" class="w-full bg-gray-800 text-white text-sm rounded-xl px-4 py-3 border border-gray-700 focus:border-blue-500 focus:outline-none appearance-none text-center">
+                <option value="">-- Mode Bebas (Tanpa Validasi) --</option>
+                {% for rak in daftar_rak %}
+                <option value="{{ rak.id_lokasi }}">{{ rak.nama_rak }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <button id="btnStart" onclick="startCamera()" class="bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-8 py-3 rounded-full shadow-lg shadow-blue-500/50 transition transform hover:scale-105 active:scale-95 flex items-center">
             <i class="fas fa-camera mr-2"></i> Buka Kamera
         </button>
@@ -121,6 +138,8 @@
         const btnFlip = document.getElementById('btnFlip');
         const detectionInfo = document.getElementById('detectionInfo');
         const scannerLine = document.getElementById('scannerLine');
+        const rakSelect = document.getElementById('rakSelect');
+        const shutterContainer = document.getElementById('shutterContainer');
 
         let stream = null;
         let animFrameId = null;
@@ -175,6 +194,7 @@
                     btnFlip.classList.remove('hidden');
                     fpsCounter.classList.remove('hidden');
                     scannerLine.style.display = 'block';
+                    shutterContainer.classList.remove('hidden');
                     
                     // Jalankan loop render & deteksi
                     window.addEventListener('resize', resizeCanvas);
@@ -205,6 +225,7 @@
             btnFlip.classList.add('hidden');
             fpsCounter.classList.add('hidden');
             scannerLine.style.display = 'none';
+            shutterContainer.classList.add('hidden');
             window.removeEventListener('resize', resizeCanvas);
             
             // Reset panel terbuka kembali
@@ -224,6 +245,46 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+        }
+
+        async function takeScreenshot() {
+            if (!rakSelect.value) {
+                alert('Pilih lokasi rak terlebih dahulu jika ingin mengambil bukti validasi!');
+                // Tidak return, biarkan tetap ambil SS tanpa validasi jika user tetap mau, atau terserah?
+                // Lebih baik return agar data tidak kotor jika butuh lokasi rak.
+                return;
+            }
+
+            // Visual feedback (flash)
+            const flashOverlay = document.createElement('div');
+            flashOverlay.className = 'absolute inset-0 bg-white z-[60] transition-opacity duration-300';
+            document.body.appendChild(flashOverlay);
+            setTimeout(() => { flashOverlay.style.opacity = '0'; }, 100);
+            setTimeout(() => { document.body.removeChild(flashOverlay); }, 400);
+
+            // Draw current canvas state
+            const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+            
+            try {
+                const response = await fetch('/save_live_scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: imageBase64,
+                        id_lokasi: rakSelect.value,
+                        detections: lastDetections
+                    })
+                });
+                const res = await response.json();
+                if (res.sukses) {
+                    alert('📸 Bukti berhasil disimpan ke Riwayat!');
+                } else {
+                    alert('Gagal menyimpan bukti: ' + res.error);
+                }
+            } catch (err) {
+                console.error('Error saving screenshot:', err);
+                alert('Terjadi kesalahan saat menyimpan bukti.');
+            }
         }
 
         // Cover fill (supaya video menutupi seluruh layar tanpa merusak rasio)
@@ -291,6 +352,9 @@
 
                     const formData = new FormData();
                     formData.append('frame', blob, 'frame.jpg');
+                    if(rakSelect.value) {
+                        formData.append('id_lokasi', rakSelect.value);
+                    }
 
                     const response = await fetch('/detect_frame', { method: 'POST', body: formData });
 
@@ -329,8 +393,23 @@
                 const w = x2 - x1;
                 const h = y2 - y1;
 
+                // Tentukan Warna Berdasarkan Status
+                let boxColor = '#3b82f6'; // Default Blue
+                let bgColor = 'rgba(59, 130, 246, 0.9)';
+                
+                if (det.status === 'SESUAI') {
+                    boxColor = '#22c55e'; // Green
+                    bgColor = 'rgba(34, 197, 94, 0.9)';
+                } else if (det.status === 'TIDAK SESUAI') {
+                    boxColor = '#ef4444'; // Red
+                    bgColor = 'rgba(239, 68, 68, 0.9)';
+                } else if (det.status === 'TIDAK DIKENAL') {
+                    boxColor = '#eab308'; // Yellow
+                    bgColor = 'rgba(234, 179, 8, 0.9)';
+                }
+
                 // Kotak deteksi modern
-                ctx.strokeStyle = '#3b82f6'; // Tailwind blue-500
+                ctx.strokeStyle = boxColor;
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x1, y1, w, h);
                 
@@ -350,12 +429,16 @@
                 ctx.stroke();
 
                 // Teks Label
-                const label = `${det.name} ${det.confidence}%`;
+                let label = `${det.name} ${det.confidence}%`;
+                if(det.status === 'TIDAK SESUAI' && det.lokasi_seharusnya) {
+                    label += ` (-> ${det.lokasi_seharusnya})`;
+                }
+                
                 ctx.font = 'bold 14px sans-serif';
                 const tw = ctx.measureText(label).width;
                 
                 // Pill background
-                ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'; // Solid blue
+                ctx.fillStyle = bgColor;
                 ctx.beginPath();
                 ctx.roundRect(x1, y1 - 32, tw + 20, 26, 13);
                 ctx.fill();
@@ -371,18 +454,40 @@
                 // Sembunyikan garis scanner karena objek sudah ketemu
                 scannerLine.style.display = 'none';
                 
-                const pills = detections.map(d => 
-                    `<div class="bg-blue-500/20 border border-blue-500/50 px-3 py-1.5 rounded-lg flex items-center justify-between w-full mb-1.5">
+                const pills = detections.map(d => {
+                    let dotColor = 'bg-blue-400';
+                    let dotShadow = 'shadow-[0_0_8px_rgba(96,165,250,1)]';
+                    let bgDiv = 'bg-blue-500/20 border-blue-500/50';
+                    let txtColor = 'text-blue-300';
+                    let subText = '';
+
+                    if (d.status === 'SESUAI') {
+                        dotColor = 'bg-green-400'; dotShadow = 'shadow-[0_0_8px_rgba(74,222,128,1)]';
+                        bgDiv = 'bg-green-500/20 border-green-500/50'; txtColor = 'text-green-300';
+                        subText = '<span class="text-[9px] text-green-200 block mt-0.5">✓ Sesuai Rak</span>';
+                    } else if (d.status === 'TIDAK SESUAI') {
+                        dotColor = 'bg-red-400'; dotShadow = 'shadow-[0_0_8px_rgba(248,113,113,1)]';
+                        bgDiv = 'bg-red-500/20 border-red-500/50'; txtColor = 'text-red-300';
+                        subText = `<span class="text-[9px] text-red-200 block mt-0.5">✗ Harusnya di ${d.lokasi_seharusnya}</span>`;
+                    } else if (d.status === 'TIDAK DIKENAL') {
+                        dotColor = 'bg-yellow-400'; dotShadow = 'shadow-[0_0_8px_rgba(250,204,21,1)]';
+                        bgDiv = 'bg-yellow-500/20 border-yellow-500/50'; txtColor = 'text-yellow-300';
+                    }
+
+                    return `<div class="${bgDiv} border px-3 py-1.5 rounded-lg flex items-center justify-between w-full mb-1.5">
                         <div class="flex items-center">
-                            <div class="w-2 h-2 rounded-full bg-green-400 mr-2 shadow-[0_0_8px_rgba(74,222,128,1)]"></div>
-                            <span class="font-bold text-white text-sm tracking-wide">${d.name}</span>
+                            <div class="w-2 h-2 rounded-full ${dotColor} mr-2 flex-shrink-0 ${dotShadow}"></div>
+                            <div>
+                                <span class="font-bold text-white text-sm tracking-wide leading-none">${d.name}</span>
+                                ${subText}
+                            </div>
                         </div>
-                        <span class="text-blue-300 font-mono text-xs bg-blue-900/50 px-2 rounded">${d.confidence}%</span>
-                    </div>`
-                ).join('');
+                        <span class="${txtColor} font-mono text-xs bg-black/30 px-2 py-0.5 rounded ml-2">${d.confidence}%</span>
+                    </div>`;
+                }).join('');
                 
                 detectionInfo.innerHTML = `
-                    <div class="w-full max-h-[15vh] overflow-y-auto pr-1 custom-scrollbar">
+                    <div class="w-full max-h-[20vh] overflow-y-auto pr-1 custom-scrollbar">
                         ${pills}
                     </div>`;
             } else {

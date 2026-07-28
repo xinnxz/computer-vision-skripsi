@@ -185,42 +185,75 @@
             return;
         }
 
+        // Hitung statistik
+        let countSesuai = 0, countTidakSesuai = 0, countTidakDikenal = 0;
+
         data.deteksi.forEach(item => {
-            const isSesuai = item.status === 'SESUAI';
+            if (item.status === 'SESUAI') countSesuai++;
+            else if (item.status === 'TIDAK SESUAI') countTidakSesuai++;
+            else countTidakDikenal++;
+
+            // Tentukan warna berdasarkan status
+            let bgColor, borderColor, textColor, iconBg, icon, statusText, subText;
+            
+            if (item.status === 'SESUAI') {
+                bgColor = 'bg-green-50'; borderColor = 'border-green-200';
+                textColor = 'text-green-800'; iconBg = 'bg-green-500';
+                icon = 'fa-check'; statusText = 'SESUAI';
+                subText = `<span class="text-green-600">Penempatan <strong>BENAR</strong> di rak ini</span>`;
+            } else if (item.status === 'TIDAK SESUAI') {
+                bgColor = 'bg-red-50'; borderColor = 'border-red-200';
+                textColor = 'text-red-800'; iconBg = 'bg-red-500';
+                icon = 'fa-times'; statusText = 'TIDAK SESUAI';
+                subText = `<span class="text-red-600"><strong>SALAH PENEMPATAN!</strong> Seharusnya di <strong>${item.lokasi_seharusnya}</strong></span>`;
+            } else {
+                bgColor = 'bg-yellow-50'; borderColor = 'border-yellow-300';
+                textColor = 'text-yellow-800'; iconBg = 'bg-yellow-500';
+                icon = 'fa-question'; statusText = 'TIDAK DIKENAL';
+                subText = `<span class="text-yellow-600">Objek tidak terdaftar di database</span>`;
+            }
+
+            const badgeBg = item.status === 'SESUAI' ? 'bg-green-100 text-green-700' :
+                            item.status === 'TIDAK SESUAI' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700';
+
             const card = `
-                <div class="flex items-center p-3 rounded-lg border ${isSesuai ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
+                <div class="flex items-center p-3 rounded-lg border ${bgColor} ${borderColor}">
                     <div class="flex-shrink-0 mr-4">
-                        <div class="w-12 h-12 rounded-full ${isSesuai ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center text-white">
-                            <i class="fas ${isSesuai ? 'fa-check' : 'fa-times'} text-xl"></i>
+                        <div class="w-12 h-12 rounded-full ${iconBg} flex items-center justify-center text-white">
+                            <i class="fas ${icon} text-xl"></i>
                         </div>
                     </div>
                     <div class="flex-1">
-                        <p class="font-bold ${isSesuai ? 'text-green-800' : 'text-red-800'}">${item.nama_bahan}</p>
-                        <p class="text-sm ${isSesuai ? 'text-green-600' : 'text-red-600'}">
-                            ${isSesuai ? 'Penempatan SESUAI' : 'SALAH PENEMPATAN! Seharusnya di ' + item.lokasi_seharusnya}
-                        </p>
+                        <p class="font-bold ${textColor}">${item.nama_bahan}</p>
+                        <p class="text-sm">${subText}</p>
                         <p class="text-xs text-gray-500 mt-1">Confidence: <strong>${(item.confidence * 100).toFixed(1)}%</strong></p>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isSesuai ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                        ${item.status}
+                    <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeBg}">
+                        ${statusText}
                     </span>
                 </div>
             `;
             detailList.innerHTML += card;
         });
 
-        // Tampilkan status keseluruhan
+        // Tampilkan ringkasan statistik
         const summarySection = document.getElementById('summarySection');
         summarySection.classList.remove('hidden');
         
-        const adaYangSalah = data.deteksi.some(item => item.status !== 'SESUAI');
         const statusBadge = document.getElementById('statusBadge');
-        if (adaYangSalah) {
-            statusBadge.textContent = '⚠️ ADA KESALAHAN PENEMPATAN';
-            statusBadge.className = 'px-3 py-1 rounded-full font-bold text-sm bg-red-100 text-red-700';
+        if (countTidakSesuai > 0) {
+            statusBadge.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${countTidakSesuai} KESALAHAN DITEMUKAN`;
+            statusBadge.className = 'px-4 py-2 rounded-full font-bold text-sm bg-red-100 text-red-700 border border-red-200';
+        } else if (countTidakDikenal > 0 && countSesuai > 0) {
+            statusBadge.innerHTML = `<i class="fas fa-check-circle mr-1"></i> SESUAI (${countTidakDikenal} objek tidak dikenal)`;
+            statusBadge.className = 'px-4 py-2 rounded-full font-bold text-sm bg-yellow-100 text-yellow-700 border border-yellow-200';
+        } else if (countSesuai > 0) {
+            statusBadge.innerHTML = `<i class="fas fa-check-double mr-1"></i> SEMUA ${countSesuai} ITEM SESUAI`;
+            statusBadge.className = 'px-4 py-2 rounded-full font-bold text-sm bg-green-100 text-green-700 border border-green-200';
         } else {
-            statusBadge.textContent = '✅ SEMUA SESUAI';
-            statusBadge.className = 'px-3 py-1 rounded-full font-bold text-sm bg-green-100 text-green-700';
+            statusBadge.innerHTML = `<i class="fas fa-info-circle mr-1"></i> Tidak ada data pencocokan`;
+            statusBadge.className = 'px-4 py-2 rounded-full font-bold text-sm bg-gray-100 text-gray-700 border border-gray-200';
         }
     }
 
