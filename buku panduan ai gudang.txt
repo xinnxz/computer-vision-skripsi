@@ -1,0 +1,32 @@
+Tahap 1: Menjalankan Server Utama (Flask & YOLO)
+Buka Visual Studio Code (VSCode) atau Command Prompt (Terminal).
+Pastikan sudah berada di folder proyek: E:\DATA\Ngoding\computer-vision-lisna
+Ketik perintah berikut lalu tekan Enter:
+bash
+
+
+python app.py
+Tunggu sampai muncul tulisan Running on http://127.0.0.1:5000. (Biarkan terminal ini tetap terbuka dan jangan ditutup, ini adalah "mesin" utamanya).
+Tahap 2: Menjalankan Tunneling (Biar bisa diakses di HP via HTTPS)
+Karena kamera HP menolak akses kalau tidak pakai HTTPS, kita harus membuka jembatan (tunnel).
+
+Buka Terminal Baru (di VSCode bisa klik ikon + atau tekan `Ctrl + Shift + `` untuk buka tab terminal baru di sebelah terminal pertama).
+
+Ketik perintah tunneling. Tadi kita berhasil menggunakan Localtunnel karena Ngrok Mas Luthfi sempat diblokir Windows Defender.
+
+👉 Opsi A: Menggunakan Localtunnel (Yang tadi sukses) Ketik perintah ini:
+
+bash
+
+
+npx localtunnel --port 5000
+Nanti akan muncul tulisan: your url is: https://nama-acak.loca.lt
+
+Tahap 3: Akses dari HP
+Copy link HTTPS yang didapat dari Tahap 2 (baik itu link .loca.lt ataupun .ngrok.app).
+Kirim link tersebut ke HP (bisa via WhatsApp Web).
+Klik link tersebut di browser HP (Chrome / Safari).
+Catatan: Jika pakai Localtunnel, akan muncul halaman peringatan keamanan (Friendly Reminder). Cukup masukkan angka IP yang tertera di layar ke dalam kolom "IP Address", lalu klik Continue.
+Halaman Login akan terbuka. Silakan login.
+Masuk ke menu Live AI Camera dan klik Buka Kamera.
+Selesai! Kamera siap mendeteksi bahan baku secara real-time lewat HP! 🚀

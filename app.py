@@ -34,7 +34,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 #  Ganti False menjadi True dan isi path model setelah training selesai
 # ============================================================
 YOLO_MODEL_READY = True      # Ubah jadi True jika model sudah ada
-YOLO_MODEL_PATH  = 'model/best.pt'  # Path ke file model hasil training
+YOLO_MODEL_PATH  = 'model/best-yolov8m.pt'  # Path ke file model hasil training
 yolo_model = None
 
 def load_yolo_model():
@@ -639,63 +639,63 @@ def hapus_staff(id):
 
 
 # ============================================================
-#  LIVE CAMERA REAL-TIME
+#  LIVE CAMERA REAL-TIME (Browser-based / Device Camera)
+#  Kamera diakses oleh browser (HP/Laptop), frame dikirim ke
+#  server untuk dideteksi YOLO, hasil dikembalikan sebagai JSON.
 # ============================================================
-def gen_frames():
-    camera = cv2.VideoCapture(0)  # Gunakan kamera default (laptop atau virtual camera seperti DroidCam)
-    while True:
-        success, frame = camera.read()
-        if not success:
-            break
-        else:
-            # Lakukan deteksi YOLO
-            if yolo_model is not None:
-                # Gunakan threshold 15% untuk live cam agar optimal
-                results = yolo_model(frame, conf=0.15, iou=0.45, agnostic_nms=True)
-                
-                img_h, img_w = frame.shape[:2]
-                thickness = 2
-                font_scale = 0.55
-                
-                for r in results:
-                    boxes = r.boxes
-                    for box in boxes:
-                        x1, y1, x2, y2 = map(int, box.xyxy[0])
-                        cls_id = int(box.cls[0])
-                        conf = float(box.conf[0])
-                        nama_kelas = r.names[cls_id].upper()
-                        
-                        # Atur warna (Merah jika salah satu kelas tertentu, tapi kita samakan saja dulu jadi hijau/merah)
-                        # Biar mudah, kita pakai hijau untuk semua di live cam, atau merah
-                        color = (0, 0, 255) # BGR: Merah
-                        
-                        # Gambar kotak
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
-                        
-                        # Gambar teks
-                        label = f"{nama_kelas} {int(conf*100)}%"
-                        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
-                        cv2.rectangle(frame, (x1, max(0, y1 - th - 10)), (x1 + tw + 10, y1), color, -1)
-                        cv2.putText(frame, label, (x1 + 5, max(0, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness)
-
-            # Encode frame ke JPEG
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
-            
-            # Yield untuk streaming HTTP multipart
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 @app.route('/live_cam')
 @login_required
 def live_cam():
     return render_template('live_cam.html')
 
-@app.route('/video_feed')
+@app.route('/detect_frame', methods=['POST'])
 @login_required
-def video_feed():
-    # Return the response generated along with the specific media type (mime type)
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+def detect_frame():
+    """
+    Menerima frame gambar dari kamera browser (via JavaScript),
+    menjalankan deteksi YOLOv8, dan mengembalikan hasil sebagai JSON.
+    
+    Request: multipart/form-data dengan field 'frame' berisi gambar JPEG.
+    Response: JSON { "detections": [ {name, confidence, x1, y1, x2, y2}, ... ] }
+    """
+    if 'frame' not in request.files:
+        return jsonify({'error': 'No frame received', 'detections': []}), 400
+
+    file = request.files['frame']
+    
+    # Baca file gambar menjadi numpy array (OpenCV format)
+    file_bytes = np.frombuffer(file.read(), np.uint8)
+    frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    
+    if frame is None:
+        return jsonify({'error': 'Invalid image', 'detections': []}), 400
+
+    detections = []
+
+    if yolo_model is not None:
+        # Jalankan deteksi YOLO pada frame
+        results = yolo_model(frame, conf=0.15, iou=0.45, agnostic_nms=True, verbose=False)
+        
+        for r in results:
+            boxes = r.boxes
+            for box in boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                nama_kelas = r.names[cls_id]
+                
+                detections.append({
+                    'name': nama_kelas,
+                    'confidence': int(conf * 100),
+                    'x1': x1,
+                    'y1': y1,
+                    'x2': x2,
+                    'y2': y2
+                })
+
+    return jsonify({'detections': detections})
+
 
 # ============================================================
 #  STARTUP

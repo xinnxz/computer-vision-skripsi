@@ -1,45 +1,398 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Google Lens Style - AI Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Animasi untuk panel deteksi */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .slide-up {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        
+        /* Scanner line animation like Google Lens */
+        @keyframes scan {
+            0% { top: 10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
+        }
+        .scanner-line {
+            position: absolute;
+            left: 10%;
+            width: 80%;
+            height: 2px;
+            background: rgba(0, 255, 0, 0.7);
+            box-shadow: 0 0 10px 2px rgba(0, 255, 0, 0.5);
+            animation: scan 2.5s infinite linear;
+            z-index: 20;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-black text-white h-screen w-screen overflow-hidden relative selection:bg-none">
 
-{% block title %}Live Camera AI{% endblock %}
+    <!-- Area Kamera Fullscreen -->
+    <video id="videoElement" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover z-0 hidden"></video>
+    <canvas id="canvasElement" class="absolute inset-0 w-full h-full object-cover z-10"></canvas>
+    
+    <!-- Garis Scan ala Google Lens -->
+    <div id="scannerLine" class="scanner-line"></div>
 
-{% block content %}
-<div class="mb-6 flex justify-between items-center">
-    <h2 class="text-2xl font-bold text-gray-800">🔴 Live Camera AI Detection</h2>
-    <a href="{{ url_for('dashboard') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">
-        <i class="fas fa-arrow-left mr-2"></i> Kembali
-    </a>
-</div>
-
-<div class="bg-white rounded-xl shadow-md p-6">
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <i class="fas fa-exclamation-triangle text-yellow-400"></i>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm text-yellow-700">
-                    <strong>Perhatian:</strong> Sistem sedang mengakses kamera utama laptop/PC Anda secara real-time. Pastikan barang berada di area yang terang agar AI dapat mendeteksi dengan optimal.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="flex flex-col items-center">
-        <!-- Kotak Kamera -->
-        <div class="relative bg-black rounded-lg overflow-hidden shadow-inner flex items-center justify-center min-h-[480px] min-w-[640px] border-4 border-gray-800">
-            <!-- Ini adalah gambar yang akan di-stream terus menerus dari Flask -->
-            <img src="{{ url_for('video_feed') }}" alt="Live Camera Feed" class="w-full h-auto object-contain">
-            
-            <!-- Indikator Live -->
-            <div class="absolute top-4 right-4 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center shadow-lg">
+    <!-- UI Overlay Atas -->
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 bg-gradient-to-b from-black/70 to-transparent">
+        <!-- Tombol Kembali -->
+        <a href="{{ url_for('dashboard') }}" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-black/70 transition">
+            <i class="fas fa-arrow-left text-xl"></i>
+        </a>
+        
+        <!-- Status & Tombol Flip Kamera -->
+        <div class="flex flex-col items-end gap-3">
+            <div id="liveIndicator" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center shadow-lg hidden">
                 <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
                 LIVE
             </div>
-        </div>
-        
-        <div class="mt-6 text-center text-gray-500 text-sm">
-            <p><i class="fas fa-info-circle mr-1"></i> Jika gambar tidak muncul, pastikan browser memiliki izin (permission) untuk mengakses kamera.</p>
+            
+            <button id="btnFlip" onclick="flipCamera()" class="bg-black/50 backdrop-blur-md text-white p-3 rounded-full hover:bg-black/70 transition hidden">
+                <i class="fas fa-sync-alt text-xl"></i>
+            </button>
+            
+            <div id="fpsCounter" class="bg-black/50 text-green-400 text-xs font-mono px-2 py-1 rounded hidden">
+                FPS: --
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
+
+    <!-- State Awal (Sebelum Mulai) -->
+    <div id="startScreen" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black">
+        <i class="fas fa-expand text-6xl text-gray-500 mb-6"></i>
+        <h2 class="text-2xl font-bold mb-2">Live AI Scanner</h2>
+        <p class="text-gray-400 text-center px-8 mb-8 text-sm">Arahkan kamera ke rak atau bahan baku gudang untuk memindai secara otomatis.</p>
+        
+        <button id="btnStart" onclick="startCamera()" class="bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-8 py-3 rounded-full shadow-lg shadow-blue-500/50 transition transform hover:scale-105 active:scale-95 flex items-center">
+            <i class="fas fa-camera mr-2"></i> Buka Kamera
+        </button>
+    </div>
+
+    <!-- UI Overlay Bawah (Panel Deteksi) -->
+    <div id="bottomPanel" class="absolute bottom-0 left-0 w-full z-50 p-2 hidden">
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 shadow-2xl slide-up">
+            
+            <!-- Header Panel (Bisa diklik untuk minimize/maximize) -->
+            <div class="flex justify-between items-center cursor-pointer" onclick="togglePanel()">
+                <div class="flex items-center">
+                    <button id="panelToggleIcon" class="text-white/80 hover:text-white mr-2 transition-transform duration-300">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <h3 class="font-bold text-sm text-white">Hasil Deteksi</h3>
+                </div>
+                <!-- stopPropagation agar saat klik tombol tutup, panel tidak ikut ter-minimize -->
+                <button id="btnStop" onclick="event.stopPropagation(); stopCamera()" class="text-red-400 hover:text-red-300 text-xs font-semibold flex items-center bg-red-500/10 px-2 py-1 rounded-full z-50 relative">
+                    <i class="fas fa-power-off mr-1"></i> Tutup
+                </button>
+            </div>
+            
+            <!-- Wrapper konten yang bisa di-hide -->
+            <div id="detectionWrapper" class="transition-all duration-300 ease-in-out overflow-hidden" style="max-height: 25vh;">
+                <div id="detectionInfo" class="flex items-center justify-center pt-2">
+                    <p class="text-gray-300 text-xs text-center w-full animate-pulse my-1">
+                        <i class="fas fa-crosshairs mr-1"></i>Mencari objek...
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logika Kamera -->
+    <script>
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvasElement');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const bottomPanel = document.getElementById('bottomPanel');
+        const liveIndicator = document.getElementById('liveIndicator');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const btnFlip = document.getElementById('btnFlip');
+        const detectionInfo = document.getElementById('detectionInfo');
+        const scannerLine = document.getElementById('scannerLine');
+
+        let stream = null;
+        let animFrameId = null;
+        let detecting = false;
+        let useFrontCamera = false; // Default: Kamera Belakang (Environment)
+        let lastDetections = [];
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+        let currentFps = 0;
+        let isPanelMinimized = false; // Status panel terbuka/tertutup
+
+        // Fungsi minimize/maximize panel
+        function togglePanel() {
+            isPanelMinimized = !isPanelMinimized;
+            const wrapper = document.getElementById('detectionWrapper');
+            const icon = document.getElementById('panelToggleIcon');
+            if (isPanelMinimized) {
+                wrapper.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(-90deg)';
+            } else {
+                wrapper.style.maxHeight = '25vh';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: useFrontCamera ? 'user' : 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    // Paksa play video
+                    video.play().catch(e => console.error("Play error:", e));
+                    
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    
+                    // Update UI State
+                    video.classList.remove('hidden');
+                    startScreen.classList.add('hidden');
+                    bottomPanel.classList.remove('hidden');
+                    liveIndicator.classList.remove('hidden');
+                    btnFlip.classList.remove('hidden');
+                    fpsCounter.classList.remove('hidden');
+                    scannerLine.style.display = 'block';
+                    
+                    // Jalankan loop render & deteksi
+                    window.addEventListener('resize', resizeCanvas);
+                    renderLoop();
+                    detectLoop();
+                };
+            } catch (err) {
+                console.error('Kamera gagal:', err);
+                alert('Gagal membuka kamera! Pastikan izin diberikan.\nError: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            detecting = false;
+            lastDetections = [];
+            
+            // Reset UI
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            video.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            bottomPanel.classList.add('hidden');
+            liveIndicator.classList.add('hidden');
+            btnFlip.classList.add('hidden');
+            fpsCounter.classList.add('hidden');
+            scannerLine.style.display = 'none';
+            window.removeEventListener('resize', resizeCanvas);
+            
+            // Reset panel terbuka kembali
+            isPanelMinimized = false;
+            document.getElementById('detectionWrapper').style.maxHeight = '25vh';
+            document.getElementById('panelToggleIcon').style.transform = 'rotate(0deg)';
+        }
+
+        async function flipCamera() {
+            useFrontCamera = !useFrontCamera;
+            if (stream) {
+                stopCamera();
+                setTimeout(() => startCamera(), 400);
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Cover fill (supaya video menutupi seluruh layar tanpa merusak rasio)
+        function drawCoverVideo(ctx, video, canvasWidth, canvasHeight) {
+            const videoRatio = video.videoWidth / video.videoHeight;
+            const canvasRatio = canvasWidth / canvasHeight;
+            let drawWidth, drawHeight, startX, startY;
+
+            if (canvasRatio > videoRatio) {
+                drawWidth = canvasWidth;
+                drawHeight = canvasWidth / videoRatio;
+                startX = 0;
+                startY = (canvasHeight - drawHeight) / 2;
+            } else {
+                drawWidth = canvasHeight * videoRatio;
+                drawHeight = canvasHeight;
+                startX = (canvasWidth - drawWidth) / 2;
+                startY = 0;
+            }
+
+            ctx.drawImage(video, startX, startY, drawWidth, drawHeight);
+            return { scaleX: drawWidth / video.videoWidth, scaleY: drawHeight / video.videoHeight, startX, startY };
+        }
+
+        function renderLoop() {
+            if (!stream) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw video full screen cover
+            const layout = drawCoverVideo(ctx, video, canvas.width, canvas.height);
+            
+            // Draw boxes
+            drawDetections(lastDetections, layout);
+            
+            // FPS
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsTime >= 1000) {
+                fpsCounter.textContent = `FPS: ${frameCount}`;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+            
+            animFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        async function detectLoop() {
+            if (!stream) return;
+            detecting = true;
+            
+            while (detecting && stream) {
+                try {
+                    // Buat frame kecil untuk dikirim ke server (hemat kuota & cepat)
+                    const blob = await new Promise(resolve => {
+                        const sendCanvas = document.createElement('canvas');
+                        const sendCtx = sendCanvas.getContext('2d');
+                        sendCanvas.width = 640;
+                        sendCanvas.height = Math.floor(640 / (video.videoWidth / video.videoHeight));
+                        sendCtx.drawImage(video, 0, 0, sendCanvas.width, sendCanvas.height);
+                        sendCanvas.toBlob(resolve, 'image/jpeg', 0.75);
+                    });
+
+                    if (!blob || !detecting) break;
+
+                    const formData = new FormData();
+                    formData.append('frame', blob, 'frame.jpg');
+
+                    const response = await fetch('/detect_frame', { method: 'POST', body: formData });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        // Skala kordinat dari ukuran 640 balik ke ukuran video asli
+                        const scale = video.videoWidth / 640;
+                        
+                        lastDetections = (result.detections || []).map(d => ({
+                            ...d,
+                            x1: d.x1 * scale,
+                            y1: d.y1 * scale,
+                            x2: d.x2 * scale,
+                            y2: d.y2 * scale
+                        }));
+                        
+                        updateDetectionUI(lastDetections);
+                    }
+                } catch (err) {
+                    console.error('Detection error:', err);
+                }
+                
+                await new Promise(r => setTimeout(r, 200)); // Delay antar deteksi
+            }
+        }
+
+        function drawDetections(detections, layout) {
+            if (!detections || detections.length === 0) return;
+
+            detections.forEach(det => {
+                // Konversi dari kordinat video asli ke kordinat canvas (fullscreen cover)
+                const x1 = layout.startX + (det.x1 * layout.scaleX);
+                const y1 = layout.startY + (det.y1 * layout.scaleY);
+                const x2 = layout.startX + (det.x2 * layout.scaleX);
+                const y2 = layout.startY + (det.y2 * layout.scaleY);
+                const w = x2 - x1;
+                const h = y2 - y1;
+
+                // Kotak deteksi modern
+                ctx.strokeStyle = '#3b82f6'; // Tailwind blue-500
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, w, h);
+                
+                // Efek corner bracket
+                const cornerLen = Math.min(w, h) * 0.15;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                // Top-left
+                ctx.moveTo(x1, y1 + cornerLen); ctx.lineTo(x1, y1); ctx.lineTo(x1 + cornerLen, y1);
+                // Top-right
+                ctx.moveTo(x2 - cornerLen, y1); ctx.lineTo(x2, y1); ctx.lineTo(x2, y1 + cornerLen);
+                // Bottom-left
+                ctx.moveTo(x1, y2 - cornerLen); ctx.lineTo(x1, y2); ctx.lineTo(x1 + cornerLen, y2);
+                // Bottom-right
+                ctx.moveTo(x2 - cornerLen, y2); ctx.lineTo(x2, y2); ctx.lineTo(x2, y2 - cornerLen);
+                ctx.stroke();
+
+                // Teks Label
+                const label = `${det.name} ${det.confidence}%`;
+                ctx.font = 'bold 14px sans-serif';
+                const tw = ctx.measureText(label).width;
+                
+                // Pill background
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'; // Solid blue
+                ctx.beginPath();
+                ctx.roundRect(x1, y1 - 32, tw + 20, 26, 13);
+                ctx.fill();
+
+                // Text color
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(label, x1 + 10, y1 - 14);
+            });
+        }
+        
+        function updateDetectionUI(detections) {
+            if (detections.length > 0) {
+                // Sembunyikan garis scanner karena objek sudah ketemu
+                scannerLine.style.display = 'none';
+                
+                const pills = detections.map(d => 
+                    `<div class="bg-blue-500/20 border border-blue-500/50 px-3 py-1.5 rounded-lg flex items-center justify-between w-full mb-1.5">
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 rounded-full bg-green-400 mr-2 shadow-[0_0_8px_rgba(74,222,128,1)]"></div>
+                            <span class="font-bold text-white text-sm tracking-wide">${d.name}</span>
+                        </div>
+                        <span class="text-blue-300 font-mono text-xs bg-blue-900/50 px-2 rounded">${d.confidence}%</span>
+                    </div>`
+                ).join('');
+                
+                detectionInfo.innerHTML = `
+                    <div class="w-full max-h-[15vh] overflow-y-auto pr-1 custom-scrollbar">
+                        ${pills}
+                    </div>`;
+            } else {
+                scannerLine.style.display = 'block';
+                detectionInfo.innerHTML = `
+                    <p class="text-gray-400 text-xs text-center w-full animate-pulse my-1">
+                        <i class="fas fa-crosshairs mr-1"></i>Mencari objek di sekitar...
+                    </p>`;
+            }
+        }
+    </script>
+</body>
+</html>
