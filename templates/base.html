@@ -40,6 +40,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ url_for('live_cam') }}" class="flex items-center px-6 py-3 hover:bg-gray-800 transition-colors text-red-400 font-bold {% if request.endpoint == 'live_cam' %}bg-gray-800 border-l-4 border-red-500{% endif %}">
+                        <i class="fas fa-video w-6"></i>
+                        <span>Live AI Camera</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ url_for('riwayat') }}" class="flex items-center px-6 py-3 hover:bg-gray-800 transition-colors {% if request.endpoint == 'riwayat' %}bg-gray-800 border-l-4 border-blue-500{% endif %}">
                         <i class="fas fa-history w-6"></i>
                         <span>Lihat Riwayat</span>
