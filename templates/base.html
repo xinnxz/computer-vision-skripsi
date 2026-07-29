@@ -140,20 +140,37 @@
         </div>
     </main>
 
+    <!-- Toggle Sidebar Script -->
     <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('mobileSidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        const isOpen = !sidebar.classList.contains('-translate-x-full');
-        
-        if (isOpen) {
-            sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
-        } else {
-            sidebar.classList.remove('-translate-x-full');
-            overlay.classList.remove('hidden');
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.style.opacity = '1', 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
         }
-    }
+        
+        // Reusable function for mobile accordion
+        function toggleDetails(id) {
+            const details = document.getElementById('details-' + id);
+            const icon = document.getElementById('icon-' + id);
+            if (details && icon) {
+                if (details.classList.contains('hidden')) {
+                    details.classList.remove('hidden');
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    details.classList.add('hidden');
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            }
+        }
     </script>
 
     {% block scripts %}{% endblock %}

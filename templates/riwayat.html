@@ -50,7 +50,8 @@
 
 <!-- Table -->
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
+    <!-- Desktop Table (Hidden on Mobile) -->
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -124,6 +125,80 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Mobile Card View (Hidden on Desktop) -->
+    <div class="md:hidden flex flex-col">
+        {% if riwayat_list %}
+            {% for row in riwayat_list %}
+            <div class="border-b border-gray-100 p-4 bg-white riwayat-row"
+                 data-rak="{{ row.id_lokasi }}"
+                 data-bahan="{{ row.nama_bahan or 'Tidak ada objek' }}"
+                 data-tanggal="{{ row.tanggal_deteksi|string|truncate(10, True, '') }}"
+                 data-status="{{ row.status }}">
+                <div class="flex justify-between items-start cursor-pointer select-none" onclick="toggleDetails('riwayat-{{ row.id_deteksi }}')">
+                    <div class="flex-1 pr-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-semibold text-gray-500">{{ row.tanggal_deteksi }}</span>
+                            {% if row.status == 'SESUAI' %}
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-100 text-green-700">SESUAI</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700">TIDAK SESUAI</span>
+                            {% endif %}
+                        </div>
+                        <h3 class="font-bold text-gray-900 text-base leading-tight">{{ row.nama_rak }}</h3>
+                        <p class="text-sm text-gray-600 mt-1">Deteksi: <span class="font-medium text-gray-800">{{ row.nama_bahan or 'Tidak ada objek' }}</span></p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mt-1">
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" id="icon-riwayat-{{ row.id_deteksi }}"></i>
+                    </div>
+                </div>
+                <div id="details-riwayat-{{ row.id_deteksi }}" class="hidden mt-4 pt-4 border-t border-gray-100">
+                    <div class="grid grid-cols-2 gap-y-4 gap-x-2">
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Confidence</p>
+                            <p class="text-sm text-gray-800 font-medium">
+                                {% if row.confidence %}
+                                    {{ (row.confidence * 100)|round(1) }}%
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Lokasi Seharusnya</p>
+                            <p class="text-sm text-gray-800 font-medium">
+                                {% if row.status == 'TIDAK SESUAI' and row.lokasi_seharusnya %}
+                                    <span class="text-red-600">{{ row.lokasi_seharusnya }}</span>
+                                {% elif row.status == 'SESUAI' %}
+                                    <span class="text-green-600">{{ row.nama_rak }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">ID Scan</p>
+                            <p class="text-sm text-gray-800">{{ row.id_deteksi }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Petugas</p>
+                            <p class="text-sm text-gray-800">{{ row.nama_user }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div id="mobileEmptyRow" style="display: none;" class="p-8 text-center text-gray-400 bg-white">
+                <i class="fas fa-search text-4xl block mb-3"></i>
+                <p class="text-sm">Tidak ada data yang sesuai dengan filter.</p>
+            </div>
+        {% else %}
+            <div class="p-8 text-center text-gray-400 bg-white">
+                <i class="fas fa-inbox text-4xl block mb-3"></i>
+                <p class="text-sm">Belum ada riwayat deteksi.</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 <script>
@@ -167,6 +242,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (emptyRow) {
             emptyRow.style.display = (visibleCount === 0) ? '' : 'none';
+        }
+        const mobileEmptyRow = document.getElementById('mobileEmptyRow');
+        if (mobileEmptyRow) {
+            mobileEmptyRow.style.display = (visibleCount === 0) ? '' : 'none';
         }
     }
 

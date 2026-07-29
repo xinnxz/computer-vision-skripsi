@@ -14,7 +14,8 @@
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="overflow-x-auto">
+    <!-- Desktop Table (Hidden on Mobile) -->
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -62,12 +63,69 @@
                 <tr>
                     <td colspan="5" class="px-6 py-12 text-center text-gray-400">
                         <i class="fas fa-users text-4xl block mb-3"></i>
-                        Belum ada pengguna.
+                        Belum ada data pengguna.
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card View (Hidden on Desktop) -->
+    <div class="md:hidden flex flex-col">
+        {% for user in user_list %}
+        <div class="border-b border-gray-100 p-4 bg-white">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleDetails('user-{{ user.id_user }}')">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3 shrink-0">
+                        {{ user.nama[0] }}
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-lg">{{ user.nama }}</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">@{{ user.username }}</p>
+                    </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 ml-2">
+                    <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" id="icon-user-{{ user.id_user }}"></i>
+                </div>
+            </div>
+            <div id="details-user-{{ user.id_user }}" class="hidden mt-4 pt-4 border-t border-gray-100">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">ID</p>
+                        <p class="text-sm text-gray-800">{{ user.id_user }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Role</p>
+                        {% if user.role == 'admin' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Petugas Gudang</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openEditModalUser('{{ user.id_user }}', '{{ user.nama }}', '{{ user.username }}', '{{ user.role }}')" class="flex-1 bg-indigo-50 text-indigo-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-100 flex justify-center items-center transition-colors">
+                        <i class="fas fa-edit mr-2"></i> Edit
+                    </button>
+                    {% if user.id_user != session.get('id') %}
+                    <a href="{{ url_for('hapus_user', id=user.id_user) }}" onclick="return confirm('Yakin ingin menghapus pengguna ini?')" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
+                        <i class="fas fa-trash mr-2"></i> Hapus
+                    </a>
+                    {% else %}
+                    <div class="flex-1 bg-gray-50 text-gray-400 py-2.5 rounded-lg text-sm font-medium flex justify-center items-center cursor-not-allowed">
+                        Akun aktif
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-400 bg-white">
+            <i class="fas fa-users text-4xl block mb-3"></i>
+            <p class="text-sm">Belum ada pengguna terdaftar.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
