@@ -128,8 +128,8 @@
 
     <!-- Mobile Card View (Hidden on Desktop) -->
     <div class="md:hidden flex flex-col">
-        {% if riwayat_list %}
-            {% for row in riwayat_list %}
+        {% if riwayat %}
+            {% for row in riwayat %}
             <div class="border-b border-gray-100 p-4 bg-white riwayat-row"
                  data-rak="{{ row.id_lokasi }}"
                  data-bahan="{{ row.nama_bahan or 'Tidak ada objek' }}"
