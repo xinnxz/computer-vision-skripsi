@@ -1,38 +1,59 @@
 import pymysql
 
-# Mapping kategori dan rak
-# Format: { 'Kategori': (id_lokasi, [daftar_keyword]) }
 kategori_map = {
-    'Barang Kartonan': (3, ['Dus', 'Masakodus']),
-    'Cairan & Botolan': (2, ['Kecap', 'Saus', 'Saostiram', 'Santan', 'Minyak']),
-    'Barang Pecah Belah': (2, ['Telur']),
-    'Bumbu Dapur Mentah': (1, ['Bawang', 'Kunyit', 'Jahe', 'Kencur', 'Sereh', 'Salam', 'Lengkuas']),
-    'Bumbu Kering': (1, ['Garam', 'Gula', 'Lada', 'Kaldu', 'Royco', 'Sasa', 'Masako']),
-    'Bahan Makanan Kering': (1, ['Kerupuk', 'Mie', 'Bihun'])
+    'Bawang merah': 'Bumbu Dapur Segar',
+    'Bawang putih': 'Bumbu Dapur Segar',
+    'Jahe': 'Bumbu Dapur Segar',
+    'Kencur': 'Bumbu Dapur Segar',
+    'Kunyit': 'Bumbu Dapur Segar',
+    'Lengkuas': 'Bumbu Dapur Segar',
+    'Salam': 'Bumbu Dapur Segar',
+    'Sereh': 'Bumbu Dapur Segar',
+
+    'Garam': 'Bumbu Dapur Kering',
+    'Gula merah': 'Bumbu Dapur Kering',
+    'Gula putih': 'Bumbu Dapur Kering',
+    'Lada putih': 'Bumbu Dapur Kering',
+
+    'Bumbu masak daisys': 'Bumbu & Penyedap Kemasan',
+    'Bumbu racik': 'Bumbu & Penyedap Kemasan',
+    'Masako': 'Bumbu & Penyedap Kemasan',
+    'Masako dus': 'Bumbu & Penyedap Kemasan',
+    'Royco': 'Bumbu & Penyedap Kemasan',
+    'Sasa': 'Bumbu & Penyedap Kemasan',
+    'Sasa bumbu kaldu ayam': 'Bumbu & Penyedap Kemasan',
+    'Sinti dus': 'Bumbu & Penyedap Kemasan',
+    'Bubuk ayam': 'Bumbu & Penyedap Kemasan',
+
+    'Kecap manis': 'Saus & Kecap',
+    'Saori saos tiram': 'Saus & Kecap',
+    'Saus cabe': 'Saus & Kecap',
+
+    'Minyak fortune dus': 'Minyak & Lemak',
+
+    'Santan kelapa kara': 'Santan Kemasan',
+    'Santan rose brand': 'Santan Kemasan',
+    'Sasa santan kelapa': 'Santan Kemasan',
+
+    'Bihun': 'Bahan Makanan Kering',
+    'Mie burung dara': 'Bahan Makanan Kering',
+    'Kerupuk jengkol': 'Bahan Makanan Kering',
+    'Kerupuk makaroni': 'Bahan Makanan Kering',
+    'Kerupuk rambak': 'Bahan Makanan Kering',
+
+    'Delta foods tongkol': 'Lauk & Protein',
+    'Ikan teri dus': 'Lauk & Protein',
+    'Telur': 'Lauk & Protein',
+    'Telur asin': 'Lauk & Protein',
+
+    'Susu realgood dus': 'Minuman Kemasan'
 }
 
-conn = pymysql.connect(host='localhost', user='root', password='', database='cv_gudang', cursorclass=pymysql.cursors.DictCursor)
-c = conn.cursor()
+conn = pymysql.connect(host='localhost', user='root', password='', database='cv_gudang')
+cursor = conn.cursor()
 
-c.execute("SELECT id_bahan, nama_bahan FROM tb_bahan_baku")
-semua_bahan = c.fetchall()
-
-for bahan in semua_bahan:
-    nama = bahan['nama_bahan']
-    id_bahan = bahan['id_bahan']
-    
-    kategori_terpilih = 'Belum Diatur'
-    id_lokasi_terpilih = 1
-    
-    # Deteksi berdasarkan keyword
-    for kat, (loc, keywords) in kategori_map.items():
-        if any(kw.lower() in nama.lower() for kw in keywords):
-            kategori_terpilih = kat
-            id_lokasi_terpilih = loc
-            break
-            
-    c.execute("UPDATE tb_bahan_baku SET kategori=%s, id_lokasi=%s WHERE id_bahan=%s", (kategori_terpilih, id_lokasi_terpilih, id_bahan))
+for nama, kategori in kategori_map.items():
+    cursor.execute("UPDATE tb_bahan_baku SET kategori = %s WHERE nama_bahan = %s", (kategori, nama))
 
 conn.commit()
-conn.close()
-print("Update Kategori dan Lokasi Berhasil!")
+print("Kategori updated!")
