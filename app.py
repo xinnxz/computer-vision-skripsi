@@ -344,6 +344,21 @@ def hapus_rak(id):
 # ============================================================
 #  ROUTES: KELOLA BAHAN BAKU
 # ============================================================
+def get_cleaned_yolo_classes():
+    if yolo_model is None:
+        return []
+    classes = set()
+    for _, raw_name in yolo_model.names.items():
+        nama_kelas = raw_name.upper()
+        nama_kelas = nama_kelas.replace("DATASET_", "")
+        nama_kelas = nama_kelas.replace("_", " ").strip()
+        nama_kelas = nama_kelas.replace("BAWANGMERAH", "BAWANG MERAH")
+        nama_kelas = nama_kelas.replace("BAWANGPUTIH", "BAWANG PUTIH")
+        nama_kelas = nama_kelas.replace("SAOSTIRAM", "SAUS TIRAM")
+        nama_kelas = nama_kelas.replace("FOTO ", "")
+        classes.add(nama_kelas.capitalize())
+    return sorted(list(classes))
+
 @app.route('/bahan')
 @login_required
 def kelola_bahan():
@@ -360,7 +375,8 @@ def kelola_bahan():
         rak_list = cursor.fetchall()
         cursor.close(); conn.close()
     except: pass
-    return render_template('kelola_bahan.html', bahan_list=bahan_list, rak_list=rak_list)
+    yolo_classes = get_cleaned_yolo_classes()
+    return render_template('kelola_bahan.html', bahan_list=bahan_list, rak_list=rak_list, yolo_classes=yolo_classes)
 
 @app.route('/bahan/tambah', methods=['POST'])
 @login_required

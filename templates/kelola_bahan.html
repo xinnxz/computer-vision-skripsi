@@ -72,8 +72,13 @@
         <form action="{{ url_for('tambah_bahan') }}" method="POST">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Nama Bahan Baku <span class="text-red-500">*</span></label>
-                <input type="text" name="nama_bahan" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="Contoh: Saus Tiram">
-                <p class="text-xs text-gray-400 mt-1">⚠️ Nama ini harus sama persis dengan label kelas pada model YOLO!</p>
+                <select name="nama_bahan" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                    <option value="">-- Pilih dari Label YOLO --</option>
+                    {% for nama_kelas in yolo_classes %}
+                    <option value="{{ nama_kelas }}">{{ nama_kelas }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-green-600 mt-1">✓ Otomatis disinkronkan dengan label YOLOv8.</p>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Kategori</label>
@@ -103,7 +108,12 @@
         <form id="formEditBahan" action="" method="POST">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Nama Bahan Baku <span class="text-red-500">*</span></label>
-                <input type="text" id="editNamaBahan" name="nama_bahan" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                <select id="editNamaBahan" name="nama_bahan" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                    <option value="">-- Pilih dari Label YOLO --</option>
+                    {% for nama_kelas in yolo_classes %}
+                    <option value="{{ nama_kelas }}">{{ nama_kelas }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Kategori</label>
