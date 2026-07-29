@@ -520,6 +520,8 @@ def deteksi():
 @login_required
 def riwayat():
     riwayat_list = []
+    daftar_rak = []
+    daftar_bahan = []
     try:
         conn = get_db(); cursor = conn.cursor()
         cursor.execute("""
@@ -532,9 +534,17 @@ def riwayat():
             ORDER BY d.tanggal_deteksi DESC
         """)
         riwayat_list = cursor.fetchall()
+        
+        cursor.execute("SELECT id_lokasi, nama_rak FROM tb_lokasi_rak ORDER BY nama_rak ASC")
+        daftar_rak = cursor.fetchall()
+        
+        cursor.execute("SELECT id_bahan, nama_bahan FROM tb_bahan_baku ORDER BY nama_bahan ASC")
+        daftar_bahan = cursor.fetchall()
+        
         cursor.close(); conn.close()
-    except: pass
-    return render_template('riwayat.html', riwayat=riwayat_list)
+    except Exception as e:
+        print(f"Error loading riwayat: {e}")
+    return render_template('riwayat.html', riwayat=riwayat_list, daftar_rak=daftar_rak, daftar_bahan=daftar_bahan)
 
 
 # ============================================================

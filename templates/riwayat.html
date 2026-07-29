@@ -22,6 +22,16 @@
         </select>
     </div>
     <div>
+        <label class="text-sm text-gray-600 mr-2">Bahan Baku:</label>
+        <select id="filterBahan" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 max-w-[150px]">
+            <option value="all">Semua Bahan</option>
+            {% for bahan in daftar_bahan %}
+            <option value="{{ bahan.nama_bahan }}">{{ bahan.nama_bahan }}</option>
+            {% endfor %}
+            <option value="Tidak ada objek">Tidak ada objek</option>
+        </select>
+    </div>
+    <div>
         <label class="text-sm text-gray-600 mr-2">Tanggal:</label>
         <input type="date" id="filterTanggal" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
     </div>
@@ -59,6 +69,7 @@
                     {% for row in riwayat %}
                     <tr class="hover:bg-gray-50 riwayat-row" 
                         data-rak="{{ row.nama_rak }}" 
+                        data-bahan="{{ row.nama_bahan or 'Tidak ada objek' }}"
                         data-tanggal="{{ row.tanggal_deteksi|string|truncate(10, True, '') }}"
                         data-status="{{ row.status }}">
                         <td class="px-6 py-4 text-sm text-gray-500">{{ row.id_deteksi }}</td>
@@ -110,16 +121,15 @@
                         <p class="text-gray-500">Tidak ada data yang sesuai dengan filter.</p>
                     </td>
                 </tr>
-                {% endif %}
             </tbody>
         </table>
     </div>
-</div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const filterRak = document.getElementById('filterRak');
+    const filterBahan = document.getElementById('filterBahan');
     const filterTanggal = document.getElementById('filterTanggal');
     const filterStatus = document.getElementById('filterStatus');
     const btnReset = document.getElementById('btnResetFilter');
@@ -131,20 +141,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!rows || rows.length === 0) return; // nothing to filter
         
         const valRak = filterRak.value;
+        const valBahan = filterBahan.value;
         const valTanggal = filterTanggal.value; // format: YYYY-MM-DD
         const valStatus = filterStatus.value;
         let visibleCount = 0;
 
         rows.forEach(row => {
             const rowRak = row.getAttribute('data-rak');
+            const rowBahan = row.getAttribute('data-bahan');
             const rowTanggal = row.getAttribute('data-tanggal');
             const rowStatus = row.getAttribute('data-status');
 
             let matchRak = (valRak === 'all') || (rowRak === valRak);
+            let matchBahan = (valBahan === 'all') || (rowBahan === valBahan);
             let matchTanggal = (!valTanggal) || (rowTanggal === valTanggal);
             let matchStatus = (valStatus === 'all') || (rowStatus === valStatus);
 
-            if (matchRak && matchTanggal && matchStatus) {
+            if (matchRak && matchBahan && matchTanggal && matchStatus) {
                 row.style.display = '';
                 visibleCount++;
             } else {
@@ -159,12 +172,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Trigger filter when any input changes
     filterRak.addEventListener('change', applyFilter);
+    filterBahan.addEventListener('change', applyFilter);
     filterTanggal.addEventListener('change', applyFilter);
     filterStatus.addEventListener('change', applyFilter);
 
     // Reset button
     btnReset.addEventListener('click', function() {
         filterRak.value = 'all';
+        filterBahan.value = 'all';
         filterTanggal.value = '';
         filterStatus.value = 'all';
         applyFilter();
