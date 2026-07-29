@@ -14,26 +14,27 @@
 <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-3 items-center">
     <div>
         <label class="text-sm text-gray-600 mr-2">Filter Rak:</label>
-        <select class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
-            <option>Semua Rak</option>
-            <option>Rak A</option>
-            <option>Rak B</option>
+        <select id="filterRak" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+            <option value="all">Semua Rak</option>
+            {% for rak in daftar_rak %}
+            <option value="{{ rak.nama_rak }}">{{ rak.nama_rak }}</option>
+            {% endfor %}
         </select>
     </div>
     <div>
         <label class="text-sm text-gray-600 mr-2">Tanggal:</label>
-        <input type="date" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+        <input type="date" id="filterTanggal" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
     </div>
     <div>
         <label class="text-sm text-gray-600 mr-2">Status:</label>
-        <select class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
-            <option>Semua Status</option>
-            <option>Sesuai</option>
-            <option>Tidak Sesuai</option>
+        <select id="filterStatus" class="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+            <option value="all">Semua Status</option>
+            <option value="SESUAI">Sesuai</option>
+            <option value="TIDAK SESUAI">Tidak Sesuai</option>
         </select>
     </div>
-    <button class="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1.5 px-4 rounded-lg text-sm">
-        <i class="fas fa-filter mr-1"></i> Filter
+    <button id="btnResetFilter" class="ml-auto bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1.5 px-4 rounded-lg text-sm transition-colors">
+        <i class="fas fa-sync-alt mr-1"></i> Reset Filter
     </button>
 </div>
 
@@ -56,7 +57,10 @@
             <tbody class="bg-white divide-y divide-gray-200" id="tableBody">
                 {% if riwayat %}
                     {% for row in riwayat %}
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50 riwayat-row" 
+                        data-rak="{{ row.nama_rak }}" 
+                        data-tanggal="{{ row.tanggal_deteksi|string|truncate(10, True, '') }}"
+                        data-status="{{ row.status }}">
                         <td class="px-6 py-4 text-sm text-gray-500">{{ row.id_deteksi }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700">{{ row.tanggal_deteksi }}</td>
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ row.nama_rak }}</td>
@@ -100,8 +104,71 @@
                     </td>
                 </tr>
                 {% endif %}
+                <tr id="emptyRow" style="display: none;">
+                    <td colspan="8" class="px-6 py-12 text-center">
+                        <i class="fas fa-search text-4xl text-gray-300 block mb-3"></i>
+                        <p class="text-gray-500">Tidak ada data yang sesuai dengan filter.</p>
+                    </td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterRak = document.getElementById('filterRak');
+    const filterTanggal = document.getElementById('filterTanggal');
+    const filterStatus = document.getElementById('filterStatus');
+    const btnReset = document.getElementById('btnResetFilter');
+    const rows = document.querySelectorAll('.riwayat-row');
+    const emptyRow = document.getElementById('emptyRow');
+    const noDataRow = document.getElementById('noDataRow'); // if table is initially empty
+
+    function applyFilter() {
+        if (!rows || rows.length === 0) return; // nothing to filter
+        
+        const valRak = filterRak.value;
+        const valTanggal = filterTanggal.value; // format: YYYY-MM-DD
+        const valStatus = filterStatus.value;
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const rowRak = row.getAttribute('data-rak');
+            const rowTanggal = row.getAttribute('data-tanggal');
+            const rowStatus = row.getAttribute('data-status');
+
+            let matchRak = (valRak === 'all') || (rowRak === valRak);
+            let matchTanggal = (!valTanggal) || (rowTanggal === valTanggal);
+            let matchStatus = (valStatus === 'all') || (rowStatus === valStatus);
+
+            if (matchRak && matchTanggal && matchStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (emptyRow) {
+            emptyRow.style.display = (visibleCount === 0) ? '' : 'none';
+        }
+    }
+
+    // Trigger filter when any input changes
+    filterRak.addEventListener('change', applyFilter);
+    filterTanggal.addEventListener('change', applyFilter);
+    filterStatus.addEventListener('change', applyFilter);
+
+    // Reset button
+    btnReset.addEventListener('click', function() {
+        filterRak.value = 'all';
+        filterTanggal.value = '';
+        filterStatus.value = 'all';
+        applyFilter();
+    });
+});
+</script>
 {% endblock %}
