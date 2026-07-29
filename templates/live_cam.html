@@ -77,12 +77,48 @@
     </div>
 
     <!-- State Awal (Sebelum Mulai) -->
-    <div id="startScreen" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black">
-        <i class="fas fa-expand text-6xl text-gray-500 mb-6"></i>
-        <h2 class="text-2xl font-bold mb-2">Live AI Scanner</h2>
-        <p class="text-gray-400 text-center px-8 mb-6 text-sm">Arahkan kamera ke rak atau bahan baku gudang untuk memindai secara otomatis.</p>
-        
-        <div class="mb-8 w-64">
+    <div id="startScreen" class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black px-6">
+        <i class="fas fa-camera-retro text-6xl text-blue-400 mb-5"></i>
+        <h2 class="text-2xl font-bold mb-1">Live AI Scanner</h2>
+        <p class="text-gray-400 text-center mb-7 text-sm">Pilih mode deteksi, lalu arahkan kamera ke rak gudang.</p>
+
+        <!-- Mode Selection Card -->
+        <div class="w-full max-w-xs mb-6">
+            <p class="text-gray-500 text-xs font-bold uppercase tracking-widest text-center mb-3">Mode Deteksi</p>
+            <div class="grid grid-cols-2 gap-3">
+                <!-- Mode Grid (Default) -->
+                <button id="btnModeGrid" onclick="setMode('grid')"
+                    class="mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-blue-500 bg-blue-500/20 text-blue-300 transition-all">
+                    <i class="fas fa-th-large text-2xl mb-2"></i>
+                    <span class="font-bold text-sm">Grid Otomatis</span>
+                    <span class="text-[10px] text-blue-400 mt-1">Smart ROI</span>
+                </button>
+                <!-- Mode Manual -->
+                <button id="btnModeManual" onclick="setMode('manual')"
+                    class="mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-gray-700 bg-gray-800 text-gray-400 transition-all">
+                    <i class="fas fa-hand-pointer text-2xl mb-2"></i>
+                    <span class="font-bold text-sm">Manual</span>
+                    <span class="text-[10px] text-gray-500 mt-1">Pilih Rak</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Keterangan Grid Mode -->
+        <div id="gridInfo" class="w-full max-w-xs bg-blue-900/40 border border-blue-700/50 rounded-2xl p-4 mb-5">
+            <p class="text-blue-300 text-xs font-bold mb-2 flex items-center"><i class="fas fa-info-circle mr-2"></i>Cara Kerja Grid Otomatis</p>
+            <p class="text-gray-400 text-xs leading-relaxed">Layar dibagi menjadi <strong class="text-white">{{ daftar_rak | length }} zona</strong> secara otomatis:</p>
+            <div class="mt-2 space-y-1">
+                {% for rak in daftar_rak %}
+                <div class="flex items-center text-xs">
+                    <span class="w-5 h-5 rounded-full bg-yellow-400/30 border border-yellow-400 text-yellow-300 flex items-center justify-center text-[10px] font-bold mr-2">{{ loop.index }}</span>
+                    <span class="text-gray-300">Zona {{ loop.index == 1 and 'Atas' or loop.index == daftar_rak|length and 'Bawah' or 'Tengah' }} → <strong class="text-white">{{ rak.nama_rak }}</strong></span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Manual Rack Select (hidden by default) -->
+        <div id="manualRakSelect" class="w-full max-w-xs mb-5 hidden">
             <label class="block text-gray-400 text-xs font-bold mb-2 text-center uppercase tracking-wider">Pilih Lokasi Rak</label>
             <select id="rakSelect" class="w-full bg-gray-800 text-white text-sm rounded-xl px-4 py-3 border border-gray-700 focus:border-blue-500 focus:outline-none appearance-none text-center">
                 <option value="">-- Mode Bebas (Tanpa Validasi) --</option>
@@ -92,7 +128,8 @@
             </select>
         </div>
 
-        <button id="btnStart" onclick="startCamera()" class="bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-8 py-3 rounded-full shadow-lg shadow-blue-500/50 transition transform hover:scale-105 active:scale-95 flex items-center">
+        <button id="btnStart" onclick="startCamera()"
+            class="bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-10 py-3 rounded-full shadow-lg shadow-blue-500/50 transition transform hover:scale-105 active:scale-95 flex items-center">
             <i class="fas fa-camera mr-2"></i> Buka Kamera
         </button>
     </div>
@@ -128,28 +165,55 @@
 
     <!-- Script Logika Kamera -->
     <script>
-        const video = document.getElementById('videoElement');
-        const canvas = document.getElementById('canvasElement');
-        const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const bottomPanel = document.getElementById('bottomPanel');
-        const liveIndicator = document.getElementById('liveIndicator');
-        const fpsCounter = document.getElementById('fpsCounter');
-        const btnFlip = document.getElementById('btnFlip');
-        const detectionInfo = document.getElementById('detectionInfo');
-        const scannerLine = document.getElementById('scannerLine');
-        const rakSelect = document.getElementById('rakSelect');
+        // ─── Konstanta dari Server ───────────────────────────────────────────────
+        const DAFTAR_RAK = {{ daftar_rak | tojson }}; // [{id_lokasi, nama_rak, ...}]
+
+        // ─── DOM Elements ────────────────────────────────────────────────────────
+        const video           = document.getElementById('videoElement');
+        const canvas          = document.getElementById('canvasElement');
+        const ctx             = canvas.getContext('2d');
+        const startScreen     = document.getElementById('startScreen');
+        const bottomPanel     = document.getElementById('bottomPanel');
+        const liveIndicator   = document.getElementById('liveIndicator');
+        const fpsCounter      = document.getElementById('fpsCounter');
+        const btnFlip         = document.getElementById('btnFlip');
+        const detectionInfo   = document.getElementById('detectionInfo');
+        const scannerLine     = document.getElementById('scannerLine');
+        const rakSelect       = document.getElementById('rakSelect');
         const shutterContainer = document.getElementById('shutterContainer');
 
-        let stream = null;
-        let animFrameId = null;
-        let detecting = false;
-        let useFrontCamera = false; // Default: Kamera Belakang (Environment)
-        let lastDetections = [];
-        let frameCount = 0;
-        let lastFpsTime = Date.now();
-        let currentFps = 0;
-        let isPanelMinimized = false; // Status panel terbuka/tertutup
+        // ─── State Variables ──────────────────────────────────────────────────────
+        let stream          = null;
+        let animFrameId     = null;
+        let detecting       = false;
+        let useFrontCamera  = false; // Default: Kamera Belakang
+        let lastDetections  = [];
+        let frameCount      = 0;
+        let lastFpsTime     = Date.now();
+        let currentFps      = 0;
+        let isPanelMinimized = false;
+        let currentMode     = 'grid'; // 'grid' atau 'manual'
+
+        // ─── Mode Selection ───────────────────────────────────────────────────────
+        function setMode(mode) {
+            currentMode = mode;
+            const btnGrid   = document.getElementById('btnModeGrid');
+            const btnManual = document.getElementById('btnModeManual');
+            const gridInfo  = document.getElementById('gridInfo');
+            const manualDiv = document.getElementById('manualRakSelect');
+
+            if (mode === 'grid') {
+                btnGrid.className   = 'mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-blue-500 bg-blue-500/20 text-blue-300 transition-all';
+                btnManual.className = 'mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-gray-700 bg-gray-800 text-gray-400 transition-all';
+                gridInfo.classList.remove('hidden');
+                manualDiv.classList.add('hidden');
+            } else {
+                btnManual.className = 'mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-blue-500 bg-blue-500/20 text-blue-300 transition-all';
+                btnGrid.className   = 'mode-btn flex flex-col items-center p-4 rounded-2xl border-2 border-gray-700 bg-gray-800 text-gray-400 transition-all';
+                gridInfo.classList.add('hidden');
+                manualDiv.classList.remove('hidden');
+            }
+        }
 
         // Fungsi minimize/maximize panel
         function togglePanel() {
@@ -248,11 +312,17 @@
         }
 
         async function takeScreenshot() {
-            if (!rakSelect.value) {
-                alert('Pilih lokasi rak terlebih dahulu jika ingin mengambil bukti validasi!');
-                // Tidak return, biarkan tetap ambil SS tanpa validasi jika user tetap mau, atau terserah?
-                // Lebih baik return agar data tidak kotor jika butuh lokasi rak.
-                return;
+            // Tentukan id_lokasi berdasarkan mode
+            let id_lokasi_save = '';
+            if (currentMode === 'manual') {
+                id_lokasi_save = rakSelect ? rakSelect.value : '';
+                if (!id_lokasi_save) {
+                    alert('Pilih lokasi rak terlebih dahulu di Mode Manual!');
+                    return;
+                }
+            } else {
+                // Mode Grid: gunakan rak pertama sebagai referensi (frame merepresentasikan keseluruhan rak)
+                id_lokasi_save = DAFTAR_RAK.length > 0 ? String(DAFTAR_RAK[0].id_lokasi) : '';
             }
 
             // Visual feedback (flash)
@@ -262,16 +332,15 @@
             setTimeout(() => { flashOverlay.style.opacity = '0'; }, 100);
             setTimeout(() => { document.body.removeChild(flashOverlay); }, 400);
 
-            // Draw current canvas state
             const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-            
+
             try {
                 const response = await fetch('/save_live_scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         image: imageBase64,
-                        id_lokasi: rakSelect.value,
+                        id_lokasi: id_lokasi_save,
                         detections: lastDetections
                     })
                 });
@@ -311,16 +380,19 @@
 
         function renderLoop() {
             if (!stream) return;
-            
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // Draw video full screen cover
             const layout = drawCoverVideo(ctx, video, canvas.width, canvas.height);
-            
-            // Draw boxes
+
+            // Draw grid lines (hanya jika mode grid aktif)
+            if (currentMode === 'grid') drawGridLines(layout);
+
+            // Draw bounding boxes
             drawDetections(lastDetections, layout);
-            
-            // FPS
+
+            // FPS counter
             frameCount++;
             const now = Date.now();
             if (now - lastFpsTime >= 1000) {
@@ -328,8 +400,51 @@
                 frameCount = 0;
                 lastFpsTime = now;
             }
-            
+
             animFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        /**
+         * Menggambar garis horizontal pembagi zona rak di atas canvas.
+         * Jumlah zona = jumlah rak di database (DAFTAR_RAK).
+         * 
+         * Rak paling atas (id_lokasi terkecil) = Zona 1 (atas layar)
+         * Rak paling bawah = Zona N (bawah layar)
+         */
+        function drawGridLines(layout) {
+            const n = DAFTAR_RAK.length;
+            if (n < 2) return; // Minimal 2 rak untuk punya garis pembatas
+
+            const zoneH = layout.drawHeight / n; // Tinggi setiap zona
+
+            for (let i = 0; i < n; i++) {
+                const zoneTop = layout.startY + (zoneH * i);
+                const zoneMid = zoneTop + zoneH / 2;
+
+                // ── Garis pembatas antar zona (kecuali garis terakhir) ──
+                if (i > 0) {
+                    const lineY = layout.startY + zoneH * i;
+                    ctx.save();
+                    ctx.setLineDash([12, 6]);
+                    ctx.strokeStyle = 'rgba(250, 204, 21, 0.7)'; // Kuning
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, lineY);
+                    ctx.lineTo(canvas.width, lineY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // ── Label nama rak di tengah zona (semi-transparan) ──
+                const rakNama = DAFTAR_RAK[i] ? DAFTAR_RAK[i].nama_rak.toUpperCase() : `RAK ${i+1}`;
+                ctx.save();
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.globalAlpha = 0.35;
+                ctx.fillStyle = '#facc15'; // Kuning
+                ctx.fillText(rakNama, canvas.width - 16, zoneMid + 8);
+                ctx.restore();
+            }
         }
 
         async function detectLoop() {
@@ -352,8 +467,16 @@
 
                     const formData = new FormData();
                     formData.append('frame', blob, 'frame.jpg');
-                    if(rakSelect.value) {
-                        formData.append('id_lokasi', rakSelect.value);
+
+                    if (currentMode === 'grid') {
+                        // Mode Grid: kirim mode=grid, backend yang menghitung zona Y
+                        formData.append('mode', 'grid');
+                    } else {
+                        // Mode Manual: kirim id_lokasi yang dipilih user
+                        formData.append('mode', 'manual');
+                        if (rakSelect && rakSelect.value) {
+                            formData.append('id_lokasi', rakSelect.value);
+                        }
                     }
 
                     const response = await fetch('/detect_frame', { method: 'POST', body: formData });

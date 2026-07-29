@@ -718,42 +718,60 @@ def detect_frame():
     Menerima frame gambar dari kamera browser (via JavaScript),
     menjalankan deteksi YOLOv8, memvalidasi dengan database, 
     dan mengembalikan hasil JSON termasuk status Sesuai/Tidak Sesuai.
+
+    Mode:
+    - 'grid' : Smart ROI — layar dibagi N zona horizontal sesuai jumlah rak.
+                Posisi Y tengah objek menentukan rak mana yang sedang discan.
+    - 'manual': User memilih rak via dropdown (mode lama, tetap tersedia).
     """
     if 'frame' not in request.files:
         return jsonify({'error': 'No frame received', 'detections': []}), 400
 
-    file = request.files['frame']
-    id_lokasi = request.form.get('id_lokasi')
-    
+    file      = request.files['frame']
+    mode      = request.form.get('mode', 'manual')   # 'grid' atau 'manual'
+    id_lokasi = request.form.get('id_lokasi', '')
+
     file_bytes = np.frombuffer(file.read(), np.uint8)
     frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    
+
     if frame is None:
         return jsonify({'error': 'Invalid image', 'detections': []}), 400
 
-    # Cache pemetaan bahan ke lokasi (UPPERCASE untuk pencocokan)
-    mapping_bahan = {}
-    semua_bahan_list = []
-    nama_rak_pilihan = 'Unknown'
-    if id_lokasi:
-        try:
-            conn = get_db(); cursor = conn.cursor()
-            cursor.execute("""
-                SELECT b.id_bahan, b.nama_bahan, b.id_lokasi, r.nama_rak
-                FROM tb_bahan_baku b
-                JOIN tb_lokasi_rak r ON b.id_lokasi = r.id_lokasi
-            """)
-            semua_bahan_list = cursor.fetchall()
-            mapping_bahan = {b['nama_bahan'].upper().strip(): b for b in semua_bahan_list}
-            
-            cursor.execute("SELECT nama_rak FROM tb_lokasi_rak WHERE id_lokasi = %s", (id_lokasi,))
-            rak_row = cursor.fetchone()
-            if rak_row: nama_rak_pilihan = rak_row['nama_rak']
-            cursor.close(); conn.close()
-        except Exception as e:
-            print(f"[DB Warning] {e}")
+    frame_height = frame.shape[0]  # Tinggi frame aktual (piksel)
 
-    # Helper: Pencocokan nama fleksibel (fuzzy match) — sama dengan jalankan_deteksi
+    # ─── Ambil data dari Database ─────────────────────────────────────────────
+    mapping_bahan   = {}
+    rak_list        = []          # Dipakai mode grid (urut A→C)
+    nama_rak_pilihan = 'Unknown'
+
+    try:
+        conn = get_db(); cursor = conn.cursor()
+
+        # Ambil semua bahan baku + nama rak
+        cursor.execute("""
+            SELECT b.id_bahan, b.nama_bahan, b.id_lokasi, r.nama_rak
+            FROM tb_bahan_baku b
+            JOIN tb_lokasi_rak r ON b.id_lokasi = r.id_lokasi
+        """)
+        semua_bahan = cursor.fetchall()
+        mapping_bahan = {b['nama_bahan'].upper().strip(): b for b in semua_bahan}
+
+        if mode == 'grid':
+            # Ambil semua rak, urut by id_lokasi ASC (Rak A paling atas)
+            cursor.execute("SELECT id_lokasi, nama_rak FROM tb_lokasi_rak ORDER BY id_lokasi ASC")
+            rak_list = cursor.fetchall()
+        else:
+            # Mode manual: nama rak yang dipilih user via dropdown
+            if id_lokasi:
+                cursor.execute("SELECT nama_rak FROM tb_lokasi_rak WHERE id_lokasi = %s", (id_lokasi,))
+                rak_row = cursor.fetchone()
+                if rak_row: nama_rak_pilihan = rak_row['nama_rak']
+
+        cursor.close(); conn.close()
+    except Exception as e:
+        print(f"[DB Warning] {e}")
+
+    # ─── Helper Fuzzy Match (sama persis dengan jalankan_deteksi) ────────────
     def cocokkan_nama_live(nama_yolo):
         nama_yolo = nama_yolo.strip()
         if nama_yolo in mapping_bahan:
@@ -771,17 +789,19 @@ def detect_frame():
     detections = []
 
     if yolo_model is not None:
-        # Jalankan deteksi YOLO pada frame
         results = yolo_model(frame, conf=0.15, iou=0.45, agnostic_nms=True, verbose=False)
-        
+
+        # Hitung tinggi setiap zona rak (untuk mode grid)
+        n_zones     = len(rak_list)
+        zone_height = frame_height / n_zones if n_zones > 0 else frame_height
+
         for r in results:
-            boxes = r.boxes
-            for box in boxes:
+            for box in r.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                cls_id = int(box.cls[0])
-                conf = float(box.conf[0])
+                cls_id          = int(box.cls[0])
+                conf            = float(box.conf[0])
                 nama_kelas_mentah = r.names[cls_id].upper()
-                
+
                 # --- PEMBERSIH TEKS OTOMATIS ---
                 nama_kelas = nama_kelas_mentah.replace("DATASET_", "")
                 nama_kelas = nama_kelas.replace("_", " ").strip()
@@ -789,30 +809,49 @@ def detect_frame():
                 nama_kelas = nama_kelas.replace("BAWANGPUTIH", "BAWANG PUTIH")
                 nama_kelas = nama_kelas.replace("SAOSTIRAM", "SAUS TIRAM")
                 nama_kelas = nama_kelas.replace("FOTO ", "")
-                
-                # Validasi database dengan fuzzy matching (konsisten dengan scan foto)
-                if not id_lokasi:
-                    status = 'INFO'
-                    lokasi_seharusnya = '-'
-                else:
+
+                # ─── Validasi berdasarkan Mode ───────────────────────────────
+                if mode == 'grid' and n_zones > 0:
+                    # Hitung pusat Y bounding box → tentukan zona rak
+                    y_center  = (y1 + y2) / 2
+                    zone_idx  = min(int(y_center / zone_height), n_zones - 1)
+                    rak_zona  = rak_list[zone_idx]          # Rak yang terdeteksi otomatis
+                    nama_rak_pilihan = rak_zona['nama_rak']
+
+                    bahan_cocok = cocokkan_nama_live(nama_kelas)
+                    if bahan_cocok:
+                        if bahan_cocok['id_lokasi'] == rak_zona['id_lokasi']:
+                            status            = 'SESUAI'
+                            lokasi_seharusnya = rak_zona['nama_rak']
+                        else:
+                            status            = 'TIDAK SESUAI'
+                            lokasi_seharusnya = bahan_cocok['nama_rak']
+                    else:
+                        status            = 'TIDAK DIKENAL'
+                        lokasi_seharusnya = '-'
+
+                elif id_lokasi:
+                    # Mode manual dengan rak dipilih
                     bahan_cocok = cocokkan_nama_live(nama_kelas)
                     if bahan_cocok:
                         status = 'SESUAI' if str(bahan_cocok['id_lokasi']) == str(id_lokasi) else 'TIDAK SESUAI'
                         lokasi_seharusnya = bahan_cocok['nama_rak'] if status == 'TIDAK SESUAI' else nama_rak_pilihan
                     else:
-                        status = 'TIDAK DIKENAL'
+                        status            = 'TIDAK DIKENAL'
                         lokasi_seharusnya = '-'
+                else:
+                    # Mode bebas (tidak ada rak dipilih)
+                    status            = 'INFO'
+                    lokasi_seharusnya = '-'
 
                 detections.append({
-                    'name': nama_kelas.capitalize(),
-                    'confidence': int(conf * 100),
-                    'x1': x1,
-                    'y1': y1,
-                    'x2': x2,
-                    'y2': y2,
-                    'status': status,
-                    'lokasi_seharusnya': lokasi_seharusnya,
-                    'lokasi_terdeteksi': nama_rak_pilihan
+                    'name'              : nama_kelas.capitalize(),
+                    'confidence'        : int(conf * 100),
+                    'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                    'status'            : status,
+                    'lokasi_seharusnya' : lokasi_seharusnya,
+                    'lokasi_terdeteksi' : nama_rak_pilihan,
+                    'zona_rak'          : nama_rak_pilihan   # info tambahan untuk grid
                 })
 
     return jsonify({'detections': detections})
