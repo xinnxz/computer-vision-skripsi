@@ -51,7 +51,7 @@
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         {% if user.id_user != session.get('id') %}
-                        <a href="{{ url_for('hapus_user', id=user.id_user) }}" onclick="return confirm('Yakin ingin menghapus pengguna ini?')" class="text-red-600 hover:text-red-900">
+                        <a href="{{ url_for('hapus_user', id=user.id_user) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus pengguna ini?');" class="text-red-600 hover:text-red-900">
                             <i class="fas fa-trash"></i> Hapus
                         </a>
                         {% else %}
@@ -109,7 +109,7 @@
                         <i class="fas fa-edit mr-2"></i> Edit
                     </button>
                     {% if user.id_user != session.get('id') %}
-                    <a href="{{ url_for('hapus_user', id=user.id_user) }}" onclick="return confirm('Yakin ingin menghapus pengguna ini?')" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
+                    <a href="{{ url_for('hapus_user', id=user.id_user) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus pengguna ini?');" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
                         <i class="fas fa-trash mr-2"></i> Hapus
                     </a>
                     {% else %}

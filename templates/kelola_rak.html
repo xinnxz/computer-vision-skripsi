@@ -35,7 +35,7 @@
                         <button onclick="bukaModalEdit({{ rak.id_lokasi }}, '{{ rak.nama_rak }}', '{{ rak.keterangan or '' }}')" class="text-indigo-600 hover:text-indigo-900 mr-3">
                             <i class="fas fa-edit"></i> Edit
                         </button>
-                        <a href="{{ url_for('hapus_rak', id=rak.id_lokasi) }}" onclick="return confirm('Yakin ingin menghapus rak ini?')" class="text-red-600 hover:text-red-900">
+                        <a href="{{ url_for('hapus_rak', id=rak.id_lokasi) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus rak ini?');" class="text-red-600 hover:text-red-900">
                             <i class="fas fa-trash"></i> Hapus
                         </a>
                     </td>
@@ -74,7 +74,7 @@
                     <button onclick="bukaModalEdit({{ rak.id_lokasi }}, '{{ rak.nama_rak }}', '{{ rak.keterangan or '' }}')" class="flex-1 bg-indigo-50 text-indigo-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-100 flex justify-center items-center transition-colors">
                         <i class="fas fa-edit mr-2"></i> Edit
                     </button>
-                    <a href="{{ url_for('hapus_rak', id=rak.id_lokasi) }}" onclick="return confirm('Yakin ingin menghapus rak ini?')" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
+                    <a href="{{ url_for('hapus_rak', id=rak.id_lokasi) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus rak ini?');" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
                         <i class="fas fa-trash mr-2"></i> Hapus
                     </a>
                 </div>
