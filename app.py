@@ -908,7 +908,7 @@ def save_live_scan():
             cursor.execute("""
                 INSERT INTO tb_deteksi (id_scan, id_user, id_lokasi, id_bahan, tanggal_deteksi, confidence, status, lokasi_seharusnya)
                 VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s)
-            """, (id_scan, session['id'], id_lok_terdeteksi, id_bahan, conf_db, item['status'], item.get('lokasi_seharusnya', '-')))
+            """, (id_scan, session['id'], id_lok_terdeteksi or id_lokasi, id_bahan, conf_db, item['status'], item.get('lokasi_seharusnya', '-')))
 
         conn.commit(); cursor.close(); conn.close()
 
