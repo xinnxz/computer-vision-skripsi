@@ -66,12 +66,7 @@
                         <span>Kelola Rak</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{{ url_for('kelola_staff') }}" class="flex items-center px-6 py-3 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_staff' %}bg-gray-800 border-l-4 border-blue-500{% endif %}">
-                        <i class="fas fa-user-tie w-6"></i>
-                        <span>Kelola Staff</span>
-                    </a>
-                </li>
+
                 <li>
                     <a href="{{ url_for('kelola_pengguna') }}" class="flex items-center px-6 py-3 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_pengguna' %}bg-gray-800 border-l-4 border-blue-500{% endif %}">
                         <i class="fas fa-users w-6"></i>
