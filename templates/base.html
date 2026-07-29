@@ -88,25 +88,21 @@
         </nav>
         
         <div class="border-t border-gray-800 flex flex-col">
-            <!-- User Info -->
-            <div class="p-4 flex items-center">
-                <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold mr-3 shrink-0">
+            <!-- User Info (Clickable Profile) -->
+            <a href="{{ url_for('profil') }}" class="p-4 flex items-center hover:bg-gray-800 transition-colors group {% if request.endpoint == 'profil' %}bg-gray-800{% endif %}">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-xl font-bold mr-3 shrink-0 text-white shadow-sm">
                     {{ session.get('nama', 'U')[0] }}
                 </div>
                 <div class="overflow-hidden">
-                    <p class="text-sm font-semibold truncate">{{ session.get('nama') }}</p>
+                    <p class="text-sm font-semibold truncate text-gray-100 group-hover:text-blue-400 transition-colors">{{ session.get('nama') }}</p>
                     <p class="text-xs text-gray-400 capitalize truncate">{{ session.get('role') }}</p>
                 </div>
-            </div>
-            <!-- Bottom Links -->
-            <div class="px-2 pb-4 space-y-1">
-                <a href="{{ url_for('profil') }}" class="flex items-center px-4 py-2 hover:bg-gray-800 rounded transition-colors {% if request.endpoint == 'profil' %}bg-gray-800 text-blue-400 font-medium{% else %}text-gray-300{% endif %}">
-                    <i class="fas fa-id-badge w-6"></i>
-                    <span class="text-sm">Profil Saya</span>
-                </a>
-                <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 hover:bg-red-900 rounded transition-colors text-red-400">
-                    <i class="fas fa-sign-out-alt w-6"></i>
-                    <span class="text-sm">Logout</span>
+            </a>
+            <!-- Logout Button -->
+            <div class="px-4 pb-4 pt-1">
+                <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full py-2 bg-red-600 hover:bg-red-700 rounded transition-colors text-white font-medium text-sm shadow-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    <span>Logout</span>
                 </a>
             </div>
         </div>
