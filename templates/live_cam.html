@@ -375,7 +375,14 @@
             }
 
             ctx.drawImage(video, startX, startY, drawWidth, drawHeight);
-            return { scaleX: drawWidth / video.videoWidth, scaleY: drawHeight / video.videoHeight, startX, startY };
+            return { 
+                scaleX: drawWidth / video.videoWidth, 
+                scaleY: drawHeight / video.videoHeight, 
+                startX, 
+                startY,
+                drawWidth,
+                drawHeight
+            };
         }
 
         function renderLoop() {
