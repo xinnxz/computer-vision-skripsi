@@ -3,10 +3,10 @@
 {% block title %}Riwayat Deteksi - Sistem Deteksi Kesalahan Penyimpanan Bahan Baku{% endblock %}
 
 {% block content %}
-<div class="flex justify-between items-center mb-6">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
     <div>
         <h2 class="text-2xl font-bold text-gray-800">Riwayat Deteksi</h2>
-        <p class="text-gray-600">Log semua hasil pemeriksaan penempatan bahan baku</p>
+        <p class="text-gray-600 text-sm md:text-base">Log semua hasil pemeriksaan penempatan bahan baku</p>
     </div>
 </div>
 
@@ -54,14 +54,14 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal & Waktu</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rak</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bahan Terdeteksi</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lokasi Seharusnya</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Petugas</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">ID</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Tanggal & Waktu</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Rak</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Bahan Terdeteksi</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Confidence</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Lokasi Seharusnya</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Petugas</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200" id="tableBody">
@@ -72,14 +72,14 @@
                         data-bahan="{{ row.nama_bahan or 'Tidak ada objek' }}"
                         data-tanggal="{{ row.tanggal_deteksi|string|truncate(10, True, '') }}"
                         data-status="{{ row.status }}">
-                        <td class="px-6 py-4 text-sm text-gray-500">{{ row.id_deteksi }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-700">{{ row.tanggal_deteksi }}</td>
-                        <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ row.nama_rak }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-700">{{ row.nama_bahan or 'Tidak ada objek' }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-700">
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ row.id_deteksi }}</td>
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ row.tanggal_deteksi }}</td>
+                        <td class="px-4 md:px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{{ row.nama_rak }}</td>
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ row.nama_bahan or 'Tidak ada objek' }}</td>
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                             {% if row.confidence %}
-                                <div class="flex items-center">
-                                    <div class="w-20 bg-gray-200 rounded-full h-2 mr-2">
+                                <div class="flex items-center min-w-[100px]">
+                                    <div class="w-20 bg-gray-200 rounded-full h-2 mr-2 shrink-0">
                                         <div class="h-2 rounded-full {% if row.confidence >= 0.7 %}bg-green-500{% else %}bg-yellow-500{% endif %}" style="width: {{ (row.confidence * 100)|round(0)|int }}%"></div>
                                     </div>
                                     <span>{{ (row.confidence * 100)|round(1) }}%</span>
@@ -88,14 +88,14 @@
                                 -
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-4 md:px-6 py-4 whitespace-nowrap">
                             {% if row.status == 'SESUAI' %}
                                 <span class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">✅ SESUAI</span>
                             {% else %}
                                 <span class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">❌ TIDAK SESUAI</span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-700">
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                             {% if row.status == 'TIDAK SESUAI' and row.lokasi_seharusnya %}
                                 <span class="text-red-600 font-medium"><i class="fas fa-arrow-right mr-1"></i>{{ row.lokasi_seharusnya }}</span>
                             {% elif row.status == 'SESUAI' %}
@@ -104,7 +104,7 @@
                                 -
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-700">{{ row.nama_user }}</td>
+                        <td class="px-4 md:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ row.nama_user }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}
