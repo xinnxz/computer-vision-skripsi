@@ -1,3 +1,4 @@
+SET FOREIGN_KEY_CHECKS=0;
 DROP TABLE IF EXISTS `tb_bahan_baku`;
 CREATE TABLE `tb_bahan_baku` (
   `id_bahan` int(11) NOT NULL AUTO_INCREMENT,
@@ -221,3 +222,6 @@ CREATE TABLE `tb_user` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 INSERT INTO `tb_user` (`id_user`, `username`, `password`, `nama`, `role`) VALUES (6, 'admin', 'scrypt:32768:8:1$ZHRPgsGs7KYEg9ah$e7b3b314a2db628ef50af1c6ebde6220201979dc0ab37dc23cb3b8eb0b7a9252cff62958ecb0aaecfdfb410c2e787c96daec253710d92fb8fd62ba65f281be70', 'Administrator', 'admin');
 INSERT INTO `tb_user` (`id_user`, `username`, `password`, `nama`, `role`) VALUES (7, 'lisna', 'scrypt:32768:8:1$B1Wv90jkUlf1dErx$dc8c67d33ed1a5575a7d54f54b7e79daeee47a7a31fb18d906967ab92fed9c89129ee78d9fd75caa06e1c1dcf2933f43f508b06ba3bdec53c8edb7d9f2896a9a', 'Lisnawati', 'pic_gudang');
+
+SET FOREIGN_KEY_CHECKS=1;
+
