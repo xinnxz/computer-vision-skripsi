@@ -45,14 +45,14 @@
                 </li>
                 
                 <li class="mt-2 border-t border-gray-800 pt-2">
-                    <button onclick="toggleDetails('submenu-gudang')" class="w-full flex items-center justify-between px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint in ['scan_rak', 'live_cam', 'riwayat'] %}bg-gray-800{% endif %}">
+                    <button onclick="toggleDetails('submenu-gudang')" class="w-full flex items-center justify-between px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint in ['scan_rak', 'live_cam'] %}bg-gray-800{% endif %}">
                         <div class="flex items-center text-gray-400">
                             <i class="fas fa-boxes w-6"></i>
                             <span class="text-xs font-semibold uppercase tracking-wider">Kelola Gudang</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200" id="icon-submenu-gudang" {% if request.endpoint in ['scan_rak', 'live_cam', 'riwayat'] %}style="transform: rotate(180deg);"{% endif %}></i>
+                        <i class="fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200" id="icon-submenu-gudang" {% if request.endpoint in ['scan_rak', 'live_cam'] %}style="transform: rotate(180deg);"{% endif %}></i>
                     </button>
-                    <ul id="details-submenu-gudang" class="bg-gray-900 overflow-hidden transition-all duration-300 {% if request.endpoint not in ['scan_rak', 'live_cam', 'riwayat'] %}hidden{% endif %}">
+                    <ul id="details-submenu-gudang" class="bg-gray-900 overflow-hidden transition-all duration-300 {% if request.endpoint not in ['scan_rak', 'live_cam'] %}hidden{% endif %}">
                         <li>
                             <a href="{{ url_for('scan_rak') }}" class="flex items-center pl-12 pr-6 py-2 hover:bg-gray-800 transition-colors {% if request.endpoint == 'scan_rak' %}text-white font-medium{% else %}text-gray-400 hover:text-gray-200{% endif %}">
                                 <i class="fas fa-camera w-5 text-sm"></i>
@@ -65,13 +65,13 @@
                                 <span class="text-sm">Live AI Camera</span>
                             </a>
                         </li>
-                        <li>
-                            <a href="{{ url_for('riwayat') }}" class="flex items-center pl-12 pr-6 py-2 hover:bg-gray-800 transition-colors {% if request.endpoint == 'riwayat' %}text-white font-medium{% else %}text-gray-400 hover:text-gray-200{% endif %}">
-                                <i class="fas fa-history w-5 text-sm"></i>
-                                <span class="text-sm">Lihat Hasil Deteksi</span>
-                            </a>
-                        </li>
                     </ul>
+                </li>
+                <li>
+                    <a href="{{ url_for('riwayat') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'riwayat' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-history w-6"></i>
+                        <span class="text-sm">Lihat Hasil Deteksi</span>
+                    </a>
                 </li>
 
                 {% if session.get('role') == 'admin' %}
