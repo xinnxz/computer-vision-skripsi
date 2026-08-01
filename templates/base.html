@@ -35,89 +35,74 @@
             <h1 class="text-sm font-bold text-center leading-tight">Sistem Deteksi Kesalahan<br>Penyimpanan Bahan Baku</h1>
         </div>
         
-        <nav class="flex-1 overflow-y-auto py-2 no-scrollbar">
-            <ul class="space-y-0.5">
+        <nav class="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            <ul class="space-y-1">
                 <li>
                     <a href="{{ url_for('dashboard') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'dashboard' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
-                        <i class="fas fa-home w-6"></i>
-                        <span class="text-sm">Dashboard</span>
+                        <i class="fas fa-home w-6 text-center"></i>
+                        <span class="text-sm ml-2">Dashboard</span>
                     </a>
                 </li>
                 
-                <li class="mt-2 border-t border-gray-800 pt-2">
-                    <button onclick="toggleDetails('submenu-gudang')" class="w-full flex items-center justify-between px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint in ['scan_rak', 'live_cam'] %}bg-gray-800{% endif %}">
-                        <div class="flex items-center text-gray-400">
-                            <i class="fas fa-boxes w-6"></i>
-                            <span class="text-xs font-semibold uppercase tracking-wider">Kelola Gudang</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200" id="icon-submenu-gudang" {% if request.endpoint in ['scan_rak', 'live_cam'] %}style="transform: rotate(180deg);"{% endif %}></i>
-                    </button>
-                    <ul id="details-submenu-gudang" class="bg-gray-900 overflow-hidden transition-all duration-300 {% if request.endpoint not in ['scan_rak', 'live_cam'] %}hidden{% endif %}">
-                        <li>
-                            <a href="{{ url_for('scan_rak') }}" class="flex items-center pl-12 pr-6 py-2 hover:bg-gray-800 transition-colors {% if request.endpoint == 'scan_rak' %}text-white font-medium{% else %}text-gray-400 hover:text-gray-200{% endif %}">
-                                <i class="fas fa-camera w-5 text-sm"></i>
-                                <span class="text-sm">Scan Rak</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ url_for('live_cam') }}" class="flex items-center pl-12 pr-6 py-2 hover:bg-gray-800 transition-colors {% if request.endpoint == 'live_cam' %}text-red-400 font-bold{% else %}text-red-400 opacity-75 hover:opacity-100{% endif %}">
-                                <i class="fas fa-video w-5 text-sm"></i>
-                                <span class="text-sm">Live AI Camera</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
                 <li>
-                    <a href="{{ url_for('riwayat') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'riwayat' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
-                        <i class="fas fa-history w-6"></i>
-                        <span class="text-sm">Lihat Hasil Deteksi</span>
+                    <a href="{{ url_for('kelola_gudang') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint in ['kelola_gudang', 'scan_rak', 'live_cam'] %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-boxes w-6 text-center"></i>
+                        <span class="text-sm ml-2">Kelola Gudang</span>
                     </a>
                 </li>
 
                 {% if session.get('role') == 'admin' %}
-                <li class="px-6 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-2">Master Data</li>
                 <li>
                     <a href="{{ url_for('kelola_bahan') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_bahan' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
-                        <i class="fas fa-box w-6"></i>
-                        <span class="text-sm">Kelola Bahan Baku</span>
+                        <i class="fas fa-box w-6 text-center"></i>
+                        <span class="text-sm ml-2">Kelola Bahan Baku</span>
                     </a>
                 </li>
                 <li>
                     <a href="{{ url_for('kelola_rak') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_rak' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
-                        <i class="fas fa-server w-6"></i>
-                        <span class="text-sm">Kelola Rak</span>
+                        <i class="fas fa-server w-6 text-center"></i>
+                        <span class="text-sm ml-2">Kelola Rak</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('kelola_staff') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_staff' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-user-tie w-6 text-center"></i>
+                        <span class="text-sm ml-2">Kelola Staff</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('kelola_pengguna') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_pengguna' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-users w-6 text-center"></i>
+                        <span class="text-sm ml-2">Kelola Pengguna</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a href="{{ url_for('riwayat') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'riwayat' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-history w-6 text-center"></i>
+                        <span class="text-sm ml-2">Lihat Hasil Deteksi</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="{{ url_for('kelola_pengguna') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_pengguna' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
-                        <i class="fas fa-users w-6"></i>
-                        <span class="text-sm">Kelola Pengguna</span>
+                    <a href="{{ url_for('profil') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'profil' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
+                        <i class="fas fa-id-badge w-6 text-center"></i>
+                        <span class="text-sm ml-2">Profil</span>
                     </a>
                 </li>
-                {% endif %}
+
+                <li>
+                    <a href="{{ url_for('logout') }}" class="flex items-center px-6 py-2.5 hover:bg-red-900 transition-colors border-l-4 border-transparent">
+                        <i class="fas fa-sign-out-alt w-6 text-center text-red-500"></i>
+                        <span class="text-sm ml-2 text-red-500 font-medium">Logout</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         
-        <div class="border-t border-gray-800 flex flex-col">
-            <!-- User Info (Clickable Profile) -->
-            <a href="{{ url_for('profil') }}" class="p-4 flex items-center hover:bg-gray-800 transition-colors group {% if request.endpoint == 'profil' %}bg-gray-800{% endif %}">
-                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-xl font-bold mr-3 shrink-0 text-white shadow-sm">
-                    {{ session.get('nama', 'U')[0] }}
-                </div>
-                <div class="overflow-hidden">
-                    <p class="text-sm font-semibold truncate text-gray-100 group-hover:text-blue-400 transition-colors">{{ session.get('nama') }}</p>
-                    <p class="text-xs text-gray-400 capitalize truncate">{{ session.get('role') }}</p>
-                </div>
-            </a>
-            <!-- Logout Button -->
-            <div class="px-4 pb-4 pt-1">
-                <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full py-2 bg-red-600 hover:bg-red-700 rounded transition-colors text-white font-medium text-sm shadow-sm">
-                    <i class="fas fa-sign-out-alt mr-2"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </div>
+        <!-- Removed bottom sticky profile since it's now in the main menu list -->
+        <div class="h-10 border-t border-gray-800"></div>
     </aside>
 
     <!-- Main Content -->

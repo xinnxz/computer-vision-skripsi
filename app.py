@@ -280,10 +280,77 @@ def dashboard():
 # ============================================================
 #  ROUTES: PROFIL PENGGUNA
 # ============================================================
-@app.route('/profil')
+@app.route('/profil', methods=['GET', 'POST'])
 @login_required
 def profil():
+    if request.method == 'POST':
+        nama = request.form.get('nama')
+        username = request.form.get('username')
+        password = request.form.get('password')
+        id_user = session.get('id')
+        
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            
+            if password:
+                hashed = generate_password_hash(password)
+                cursor.execute("UPDATE tb_user SET nama=%s, username=%s, password=%s WHERE id_user=%s", (nama, username, hashed, id_user))
+            else:
+                cursor.execute("UPDATE tb_user SET nama=%s, username=%s WHERE id_user=%s", (nama, username, id_user))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            # Update session
+            session['nama'] = nama
+            session['username'] = username
+            
+            flash('Profil berhasil diperbarui!', 'success')
+            return redirect(url_for('profil'))
+            
+        except Exception as e:
+            flash(f'Gagal memperbarui profil: {e}', 'danger')
+            return redirect(url_for('profil'))
+            
     return render_template('profil.html')
+
+@app.route('/profil/hapus')
+@login_required
+def hapus_profil():
+    id_user = session.get('id')
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tb_user WHERE id_user=%s", (id_user,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        session.clear()
+        flash('Akun Anda berhasil dihapus.', 'info')
+        return redirect(url_for('login'))
+    except Exception as e:
+        flash(f'Gagal menghapus akun: {e}', 'danger')
+        return redirect(url_for('profil'))
+
+
+# ============================================================
+#  ROUTES: KELOLA GUDANG
+# ============================================================
+@app.route('/kelola_gudang')
+@login_required
+def kelola_gudang():
+    rak_list = []
+    try:
+        conn = get_db(); cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tb_lokasi_rak ORDER BY id_lokasi")
+        rak_list = cursor.fetchall()
+        cursor.close(); conn.close()
+    except: pass
+    return render_template('kelola_gudang.html', rak_list=rak_list)
+
 
 # ============================================================
 #  ROUTES: KELOLA RAK
@@ -300,33 +367,53 @@ def kelola_rak():
     except: pass
     return render_template('kelola_rak.html', rak_list=rak_list)
 
-@app.route('/rak/tambah', methods=['POST'])
+@app.route('/rak/tambah', methods=['GET', 'POST'])
 @login_required
 def tambah_rak():
-    nama_rak = request.form['nama_rak']
-    keterangan = request.form.get('keterangan', '')
-    try:
-        conn = get_db(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO tb_lokasi_rak (nama_rak, keterangan) VALUES (%s, %s)", (nama_rak, keterangan))
-        conn.commit(); cursor.close(); conn.close()
-        flash('Rak berhasil ditambahkan!', 'success')
-    except Exception as e:
-        flash(f'Gagal menambah rak: {e}', 'danger')
-    return redirect(url_for('kelola_rak'))
+    if request.method == 'POST':
+        nama_rak = request.form['nama_rak']
+        keterangan = request.form.get('keterangan', '')
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("INSERT INTO tb_lokasi_rak (nama_rak, keterangan) VALUES (%s, %s)", (nama_rak, keterangan))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Rak berhasil ditambahkan!', 'success')
+            return redirect(url_for('kelola_rak'))
+        except Exception as e:
+            flash(f'Gagal menambah rak: {e}', 'danger')
+            return redirect(url_for('tambah_rak'))
+    return render_template('tambah_rak.html')
 
-@app.route('/rak/edit/<int:id>', methods=['POST'])
+@app.route('/rak/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_rak(id):
-    nama_rak = request.form['nama_rak']
-    keterangan = request.form.get('keterangan', '')
+    if request.method == 'POST':
+        nama_rak = request.form['nama_rak']
+        keterangan = request.form.get('keterangan', '')
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("UPDATE tb_lokasi_rak SET nama_rak=%s, keterangan=%s WHERE id_lokasi=%s", (nama_rak, keterangan, id))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Data rak berhasil diperbarui!', 'success')
+            return redirect(url_for('kelola_rak'))
+        except Exception as e:
+            flash(f'Gagal memperbarui rak: {e}', 'danger')
+            return redirect(url_for('edit_rak', id=id))
+            
+    # GET method
+    rak = None
     try:
         conn = get_db(); cursor = conn.cursor()
-        cursor.execute("UPDATE tb_lokasi_rak SET nama_rak=%s, keterangan=%s WHERE id_lokasi=%s", (nama_rak, keterangan, id))
-        conn.commit(); cursor.close(); conn.close()
-        flash('Data rak berhasil diperbarui!', 'success')
-    except Exception as e:
-        flash(f'Gagal memperbarui rak: {e}', 'danger')
-    return redirect(url_for('kelola_rak'))
+        cursor.execute("SELECT * FROM tb_lokasi_rak WHERE id_lokasi=%s", (id,))
+        rak = cursor.fetchone()
+        cursor.close(); conn.close()
+    except: pass
+    
+    if not rak:
+        flash('Data rak tidak ditemukan!', 'danger')
+        return redirect(url_for('kelola_rak'))
+        
+    return render_template('edit_rak.html', rak=rak)
 
 @app.route('/rak/hapus/<int:id>')
 @login_required
@@ -378,35 +465,69 @@ def kelola_bahan():
     yolo_classes = get_cleaned_yolo_classes()
     return render_template('kelola_bahan.html', bahan_list=bahan_list, rak_list=rak_list, yolo_classes=yolo_classes)
 
-@app.route('/bahan/tambah', methods=['POST'])
+@app.route('/bahan/tambah', methods=['GET', 'POST'])
 @login_required
 def tambah_bahan():
-    nama_bahan = request.form['nama_bahan']
-    kategori   = request.form.get('kategori', '')
-    id_lokasi  = request.form['id_lokasi']
+    if request.method == 'POST':
+        nama_bahan = request.form['nama_bahan']
+        kategori   = request.form.get('kategori', '')
+        id_lokasi  = request.form['id_lokasi']
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("INSERT INTO tb_bahan_baku (nama_bahan, kategori, id_lokasi) VALUES (%s, %s, %s)", (nama_bahan, kategori, id_lokasi))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Bahan baku berhasil ditambahkan!', 'success')
+            return redirect(url_for('kelola_bahan'))
+        except Exception as e:
+            flash(f'Gagal menambah bahan baku: {e}', 'danger')
+            return redirect(url_for('tambah_bahan'))
+    
+    # GET method
+    rak_list = []
     try:
         conn = get_db(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO tb_bahan_baku (nama_bahan, kategori, id_lokasi) VALUES (%s, %s, %s)", (nama_bahan, kategori, id_lokasi))
-        conn.commit(); cursor.close(); conn.close()
-        flash('Bahan baku berhasil ditambahkan!', 'success')
-    except Exception as e:
-        flash(f'Gagal menambah bahan baku: {e}', 'danger')
-    return redirect(url_for('kelola_bahan'))
+        cursor.execute("SELECT * FROM tb_lokasi_rak ORDER BY id_lokasi")
+        rak_list = cursor.fetchall()
+        cursor.close(); conn.close()
+    except: pass
+    yolo_classes = get_cleaned_yolo_classes()
+    return render_template('tambah_bahan.html', rak_list=rak_list, yolo_classes=yolo_classes)
 
-@app.route('/bahan/edit/<int:id>', methods=['POST'])
+@app.route('/bahan/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_bahan(id):
-    nama_bahan = request.form['nama_bahan']
-    kategori   = request.form.get('kategori', '')
-    id_lokasi  = request.form['id_lokasi']
+    if request.method == 'POST':
+        nama_bahan = request.form['nama_bahan']
+        kategori   = request.form.get('kategori', '')
+        id_lokasi  = request.form['id_lokasi']
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("UPDATE tb_bahan_baku SET nama_bahan=%s, kategori=%s, id_lokasi=%s WHERE id_bahan=%s", (nama_bahan, kategori, id_lokasi, id))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Bahan baku berhasil diperbarui!', 'success')
+            return redirect(url_for('kelola_bahan'))
+        except Exception as e:
+            flash(f'Gagal memperbarui bahan baku: {e}', 'danger')
+            return redirect(url_for('edit_bahan', id=id))
+            
+    # GET method
+    bahan = None
+    rak_list = []
     try:
         conn = get_db(); cursor = conn.cursor()
-        cursor.execute("UPDATE tb_bahan_baku SET nama_bahan=%s, kategori=%s, id_lokasi=%s WHERE id_bahan=%s", (nama_bahan, kategori, id_lokasi, id))
-        conn.commit(); cursor.close(); conn.close()
-        flash('Bahan baku berhasil diperbarui!', 'success')
-    except Exception as e:
-        flash(f'Gagal memperbarui bahan baku: {e}', 'danger')
-    return redirect(url_for('kelola_bahan'))
+        cursor.execute("SELECT * FROM tb_bahan_baku WHERE id_bahan=%s", (id,))
+        bahan = cursor.fetchone()
+        cursor.execute("SELECT * FROM tb_lokasi_rak ORDER BY id_lokasi")
+        rak_list = cursor.fetchall()
+        cursor.close(); conn.close()
+    except: pass
+    
+    if not bahan:
+        flash('Data tidak ditemukan!', 'danger')
+        return redirect(url_for('kelola_bahan'))
+        
+    yolo_classes = get_cleaned_yolo_classes()
+    return render_template('edit_bahan.html', bahan=bahan, rak_list=rak_list, yolo_classes=yolo_classes)
 
 @app.route('/bahan/hapus/<int:id>')
 @login_required
@@ -565,23 +686,72 @@ def kelola_pengguna():
     except: pass
     return render_template('kelola_pengguna.html', user_list=user_list)
 
-@app.route('/pengguna/tambah', methods=['POST'])
+@app.route('/pengguna/tambah', methods=['GET', 'POST'])
 @login_required
 def tambah_user():
     if session.get('role') != 'admin':
         return redirect(url_for('dashboard'))
-    nama     = request.form['nama']
-    username = request.form['username']
-    password = generate_password_hash(request.form['password'])
-    role     = request.form['role']
+        
+    if request.method == 'POST':
+        nama     = request.form['nama']
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'])
+        role     = request.form['role']
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("INSERT INTO tb_user (username, password, nama, role) VALUES (%s, %s, %s, %s)", (username, password, nama, role))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Pengguna berhasil ditambahkan!', 'success')
+            return redirect(url_for('kelola_pengguna'))
+        except Exception as e:
+            flash(f'Gagal menambah pengguna: {e}', 'danger')
+            return redirect(url_for('tambah_user'))
+            
+    return render_template('tambah_pengguna.html')
+
+@app.route('/pengguna/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(id):
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        nama     = request.form['nama']
+        username = request.form['username']
+        role     = request.form['role']
+        
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            
+            # Jika password diisi, update password juga
+            password_baru = request.form.get('password')
+            if password_baru:
+                hashed_pw = generate_password_hash(password_baru)
+                cursor.execute("UPDATE tb_user SET nama=%s, username=%s, role=%s, password=%s WHERE id_user=%s", (nama, username, role, hashed_pw, id))
+            else:
+                cursor.execute("UPDATE tb_user SET nama=%s, username=%s, role=%s WHERE id_user=%s", (nama, username, role, id))
+                
+            conn.commit(); cursor.close(); conn.close()
+            flash('Data pengguna berhasil diperbarui!', 'success')
+            return redirect(url_for('kelola_pengguna'))
+        except Exception as e:
+            flash(f'Gagal memperbarui pengguna: {e}', 'danger')
+            return redirect(url_for('edit_user', id=id))
+            
+    # GET method
+    user = None
     try:
         conn = get_db(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO tb_user (username, password, nama, role) VALUES (%s, %s, %s, %s)", (username, password, nama, role))
-        conn.commit(); cursor.close(); conn.close()
-        flash('Pengguna berhasil ditambahkan!', 'success')
-    except Exception as e:
-        flash(f'Gagal menambah pengguna: {e}', 'danger')
-    return redirect(url_for('kelola_pengguna'))
+        cursor.execute("SELECT id_user, username, nama, role FROM tb_user WHERE id_user=%s", (id,))
+        user = cursor.fetchone()
+        cursor.close(); conn.close()
+    except: pass
+    
+    if not user:
+        flash('Data pengguna tidak ditemukan!', 'danger')
+        return redirect(url_for('kelola_pengguna'))
+        
+    return render_template('edit_pengguna.html', user=user)
 
 @app.route('/pengguna/hapus/<int:id>')
 @login_required
@@ -600,30 +770,92 @@ def hapus_user(id):
         flash(f'Gagal menghapus pengguna: {e}', 'danger')
     return redirect(url_for('kelola_pengguna'))
 
-@app.route('/pengguna/edit/<int:id>', methods=['POST'])
+# ============================================================
+#  ROUTES: KELOLA STAFF
+# ============================================================
+@app.route('/staff')
 @login_required
-def edit_user(id):
+def kelola_staff():
     if session.get('role') != 'admin':
+        flash('Akses ditolak. Hanya admin yang bisa mengelola staff.', 'danger')
         return redirect(url_for('dashboard'))
-    nama     = request.form['nama']
-    username = request.form['username']
-    role     = request.form['role']
+    staff_list = []
     try:
         conn = get_db(); cursor = conn.cursor()
-        # Cek apakah password diubah
-        new_password = request.form.get('password', '').strip()
-        if new_password:
-            hashed = generate_password_hash(new_password)
-            cursor.execute("UPDATE tb_user SET nama=%s, username=%s, password=%s, role=%s WHERE id_user=%s",
-                           (nama, username, hashed, role, id))
-        else:
-            cursor.execute("UPDATE tb_user SET nama=%s, username=%s, role=%s WHERE id_user=%s",
-                           (nama, username, role, id))
+        cursor.execute("SELECT * FROM tb_staff ORDER BY id_staff")
+        staff_list = cursor.fetchall()
+        cursor.close(); conn.close()
+    except: pass
+    return render_template('kelola_staff.html', staff_list=staff_list)
+
+@app.route('/staff/tambah', methods=['GET', 'POST'])
+@login_required
+def tambah_staff():
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        nama_staff = request.form['nama_staff']
+        jabatan = request.form.get('jabatan', '')
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("INSERT INTO tb_staff (nama_staff, jabatan) VALUES (%s, %s)", (nama_staff, jabatan))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Staff berhasil ditambahkan!', 'success')
+            return redirect(url_for('kelola_staff'))
+        except Exception as e:
+            flash(f'Gagal menambah staff: {e}', 'danger')
+            return redirect(url_for('tambah_staff'))
+            
+    return render_template('tambah_staff.html')
+
+@app.route('/staff/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_staff(id):
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        nama_staff = request.form['nama_staff']
+        jabatan = request.form.get('jabatan', '')
+        try:
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("UPDATE tb_staff SET nama_staff=%s, jabatan=%s WHERE id_staff=%s", (nama_staff, jabatan, id))
+            conn.commit(); cursor.close(); conn.close()
+            flash('Data staff berhasil diperbarui!', 'success')
+            return redirect(url_for('kelola_staff'))
+        except Exception as e:
+            flash(f'Gagal memperbarui staff: {e}', 'danger')
+            return redirect(url_for('edit_staff', id=id))
+            
+    # GET method
+    staff = None
+    try:
+        conn = get_db(); cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tb_staff WHERE id_staff=%s", (id,))
+        staff = cursor.fetchone()
+        cursor.close(); conn.close()
+    except: pass
+    
+    if not staff:
+        flash('Data staff tidak ditemukan!', 'danger')
+        return redirect(url_for('kelola_staff'))
+        
+    return render_template('edit_staff.html', staff=staff)
+
+@app.route('/staff/hapus/<int:id>')
+@login_required
+def hapus_staff(id):
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+    try:
+        conn = get_db(); cursor = conn.cursor()
+        cursor.execute("DELETE FROM tb_staff WHERE id_staff=%s", (id,))
         conn.commit(); cursor.close(); conn.close()
-        flash('Pengguna berhasil diperbarui!', 'success')
+        flash('Staff berhasil dihapus!', 'success')
     except Exception as e:
-        flash(f'Gagal memperbarui pengguna: {e}', 'danger')
-    return redirect(url_for('kelola_pengguna'))
+        flash(f'Gagal menghapus staff: {e}', 'danger')
+    return redirect(url_for('kelola_staff'))
 
 # ============================================================
 #  LIVE CAMERA REAL-TIME (Browser-based / Device Camera)

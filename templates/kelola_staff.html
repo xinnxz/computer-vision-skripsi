@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Kelola Staff - Sistem Gudang Kantin{% endblock %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">Kelola Staff</h2>
+        <p class="text-gray-600 text-sm md:text-base">Manajemen data staff / karyawan</p>
+    </div>
+    <a href="{{ url_for('tambah_staff') }}" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow whitespace-nowrap inline-flex items-center justify-center">
+        <i class="fas fa-user-plus mr-2"></i> Tambah Staff
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <!-- Desktop Table (Hidden on Mobile) -->
+    <div class="hidden md:block overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">ID</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nama Staff</th>
+                    <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Jabatan</th>
+                    <th class="px-4 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for staff in staff_list %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 md:px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{{ staff.id_staff }}</td>
+                    <td class="px-4 md:px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold mr-3 text-sm shrink-0">
+                                {{ staff.nama_staff[0] }}
+                            </div>
+                            <span class="text-sm font-bold text-gray-900">{{ staff.nama_staff }}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 md:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{{ staff.jabatan or '-' }}</td>
+                    <td class="px-4 md:px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                        <a href="{{ url_for('edit_staff', id=staff.id_staff) }}" class="text-blue-600 hover:text-blue-900 mr-3">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{{ url_for('hapus_staff', id=staff.id_staff) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus staff ini?');" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i> Hapus
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                        <i class="fas fa-users text-4xl block mb-3"></i>
+                        Belum ada data staff.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Card View (Hidden on Desktop) -->
+    <div class="md:hidden flex flex-col">
+        {% for staff in staff_list %}
+        <div class="border-b border-gray-100 p-4 bg-white">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleDetails('staff-{{ staff.id_staff }}')">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold mr-3 shrink-0">
+                        {{ staff.nama_staff[0] }}
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-lg">{{ staff.nama_staff }}</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ staff.jabatan or '-' }}</p>
+                    </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0 ml-2">
+                    <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" id="icon-staff-{{ staff.id_staff }}"></i>
+                </div>
+            </div>
+            <div id="details-staff-{{ staff.id_staff }}" class="hidden mt-4 pt-4 border-t border-gray-100">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">ID</p>
+                        <p class="text-sm text-gray-800">{{ staff.id_staff }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
+                        <p class="text-sm text-gray-800">{{ staff.jabatan or '-' }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ url_for('edit_staff', id=staff.id_staff) }}" class="flex-1 bg-indigo-50 text-indigo-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-100 flex justify-center items-center transition-colors">
+                        <i class="fas fa-edit mr-2"></i> Edit
+                    </a>
+                    <a href="{{ url_for('hapus_staff', id=staff.id_staff) }}" onclick="event.preventDefault(); confirmDelete(this.href, 'Yakin ingin menghapus staff ini?');" class="flex-1 bg-red-50 text-red-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 flex justify-center items-center transition-colors">
+                        <i class="fas fa-trash mr-2"></i> Hapus
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-400 bg-white">
+            <i class="fas fa-users text-4xl block mb-3"></i>
+            <p class="text-sm">Belum ada data staff.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

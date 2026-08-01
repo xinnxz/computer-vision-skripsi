@@ -211,6 +211,14 @@ INSERT INTO `tb_scan` (`id_scan`, `id_user`, `id_lokasi`, `gambar`, `gambar_hasi
 INSERT INTO `tb_scan` (`id_scan`, `id_user`, `id_lokasi`, `gambar`, `gambar_hasil`, `waktu_scan`) VALUES (45, 6, 1, 'live_20260729_081740.jpg', 'live_20260729_081740.jpg', '2026-07-29 08:17:40');
 INSERT INTO `tb_scan` (`id_scan`, `id_user`, `id_lokasi`, `gambar`, `gambar_hasil`, `waktu_scan`) VALUES (46, 6, 1, 'live_20260729_081823.jpg', 'live_20260729_081823.jpg', '2026-07-29 08:18:23');
 
+DROP TABLE IF EXISTS `tb_staff`;
+CREATE TABLE `tb_staff` (
+  `id_staff` int(11) NOT NULL AUTO_INCREMENT,
+  `nama` varchar(100) NOT NULL,
+  `role` varchar(50) NOT NULL,
+  PRIMARY KEY (`id_staff`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 DROP TABLE IF EXISTS `tb_user`;
 CREATE TABLE `tb_user` (
   `id_user` int(11) NOT NULL AUTO_INCREMENT,

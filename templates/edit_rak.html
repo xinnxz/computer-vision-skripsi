@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Data Rak - Sistem Gudang Kantin{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center">
+    <a href="{{ url_for('kelola_rak') }}" class="mr-4 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-arrow-left text-xl"></i>
+    </a>
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">Edit Data Rak</h2>
+        <p class="text-gray-600 text-sm md:text-base">Perbarui lokasi rak (ID: {{ rak.id_lokasi }})</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 max-w-2xl">
+    <form action="{{ url_for('edit_rak', id=rak.id_lokasi) }}" method="POST">
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Nama Rak <span class="text-red-500">*</span></label>
+            <input type="text" name="nama_rak" value="{{ rak.nama_rak }}" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+        </div>
+        
+        <div class="mb-8">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Keterangan</label>
+            <textarea name="keterangan" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" rows="3">{{ rak.keterangan or '' }}</textarea>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
+                <i class="fas fa-save mr-2"></i> Perbarui Data
+            </button>
+            <a href="{{ url_for('kelola_rak') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg transition-colors border border-gray-300">
+                Batal
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
