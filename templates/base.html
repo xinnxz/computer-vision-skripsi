@@ -64,7 +64,7 @@
                         <span class="text-sm ml-2">Kelola Rak</span>
                     </a>
                 </li>
-                <li>
+                <li class="hidden">
                     <a href="{{ url_for('kelola_staff') }}" class="flex items-center px-6 py-2.5 hover:bg-gray-800 transition-colors {% if request.endpoint == 'kelola_staff' %}bg-gray-800 border-l-4 border-blue-500{% else %}border-l-4 border-transparent{% endif %}">
                         <i class="fas fa-user-tie w-6 text-center"></i>
                         <span class="text-sm ml-2">Kelola Staff</span>
