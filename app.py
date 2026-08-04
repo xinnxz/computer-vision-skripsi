@@ -953,7 +953,7 @@ def detect_frame():
     detections = []
 
     if yolo_model is not None:
-        results = yolo_model(frame, conf=0.15, iou=0.45, agnostic_nms=True, verbose=False)
+        results = yolo_model(frame, conf=0.50, iou=0.45, agnostic_nms=True, verbose=False)
 
         # Hitung tinggi setiap zona rak (untuk mode grid)
         n_zones     = len(rak_list)
