@@ -144,7 +144,7 @@ def jalankan_deteksi(image_path, id_lokasi_pilihan):
     # ---- MODE YOLO ASLI ----
     if yolo_model is not None:
         # Kembalikan ke threshold normal 25% agar tidak halu
-        results = yolo_model(img, conf=0.25, iou=0.45, agnostic_nms=True)
+        results = yolo_model(img, conf=0.25, iou=0.20, agnostic_nms=True)
         
         img_h, img_w = img.shape[:2]
         # Skala otomatis: font & garis menyesuaikan resolusi gambar
@@ -953,7 +953,7 @@ def detect_frame():
     detections = []
 
     if yolo_model is not None:
-        results = yolo_model(frame, conf=0.50, iou=0.45, agnostic_nms=True, verbose=False)
+        results = yolo_model(frame, conf=0.50, iou=0.20, agnostic_nms=True, verbose=False)
 
         # Hitung tinggi setiap zona rak (untuk mode grid)
         n_zones     = len(rak_list)
