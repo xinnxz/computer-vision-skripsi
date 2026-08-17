@@ -474,6 +474,14 @@ def tambah_bahan():
         id_lokasi  = request.form['id_lokasi']
         try:
             conn = get_db(); cursor = conn.cursor()
+            # === REVISI 1: Cek duplikasi nama bahan baku ===
+            cursor.execute("SELECT COUNT(*) as jml FROM tb_bahan_baku WHERE LOWER(nama_bahan) = LOWER(%s)", (nama_bahan,))
+            hasil = cursor.fetchone()
+            if hasil and hasil['jml'] > 0:
+                cursor.close(); conn.close()
+                flash(f'Gagal! Bahan baku "{nama_bahan}" sudah ada di database. Tidak boleh ada data double.', 'danger')
+                return redirect(url_for('tambah_bahan'))
+            # === END REVISI 1 ===
             cursor.execute("INSERT INTO tb_bahan_baku (nama_bahan, kategori, id_lokasi) VALUES (%s, %s, %s)", (nama_bahan, kategori, id_lokasi))
             conn.commit(); cursor.close(); conn.close()
             flash('Bahan baku berhasil ditambahkan!', 'success')
@@ -502,6 +510,14 @@ def edit_bahan(id):
         id_lokasi  = request.form['id_lokasi']
         try:
             conn = get_db(); cursor = conn.cursor()
+            # === REVISI 1: Cek duplikasi nama bahan (kecuali dirinya sendiri) ===
+            cursor.execute("SELECT COUNT(*) as jml FROM tb_bahan_baku WHERE LOWER(nama_bahan) = LOWER(%s) AND id_bahan != %s", (nama_bahan, id))
+            hasil = cursor.fetchone()
+            if hasil and hasil['jml'] > 0:
+                cursor.close(); conn.close()
+                flash(f'Gagal! Bahan baku "{nama_bahan}" sudah digunakan oleh data lain. Tidak boleh ada data double.', 'danger')
+                return redirect(url_for('edit_bahan', id=id))
+            # === END REVISI 1 ===
             cursor.execute("UPDATE tb_bahan_baku SET nama_bahan=%s, kategori=%s, id_lokasi=%s WHERE id_bahan=%s", (nama_bahan, kategori, id_lokasi, id))
             conn.commit(); cursor.close(); conn.close()
             flash('Bahan baku berhasil diperbarui!', 'success')
@@ -1007,6 +1023,11 @@ def detect_frame():
                     # Mode bebas (tidak ada rak dipilih)
                     status            = 'INFO'
                     lokasi_seharusnya = '-'
+
+                # === REVISI 2: Jangan tampilkan objek yang tidak dikenal ===
+                if status == 'TIDAK DIKENAL':
+                    continue  # Skip, tidak ditampilkan di layar
+                # === END REVISI 2 ===
 
                 detections.append({
                     'name'              : nama_kelas.capitalize(),
